@@ -57,7 +57,7 @@ project/
 │   │   ├── validate-test/SKILL.md
 │   │   ├── edit-test/SKILL.md
 │   │   └── check-typography/SKILL.md
-│   ├── tool/
+│   ├── tools/
 │   │   └── playwright-explore.ts     # custom tool: drives the browser, returns ARIA snapshot + screenshot path
 │   ├── agents/
 │   │   └── vision.md                 # sub-agent that uses Ministral-3:3b (only for screenshots)
@@ -159,12 +159,14 @@ relevant to the current step from it — no live research needed, no context ove
 
 ### 4.2 Interface: OpenCode ↔ Playwright
 
-OpenCode has **custom tools**: TypeScript/JavaScript files under `.opencode/tool/` that
-export a function the AI can call (`@opencode-ai/plugin`, `tool()` with a Zod-like
-schema for `args` + an `execute` function). Playwright is itself a Node library — so it
-runs directly inside such a custom tool, no detour needed.
+OpenCode has **custom tools**: TypeScript/JavaScript files under `.opencode/tools/`
+(verified against the installed OpenCode binary — plural, not singular) that export a
+function the AI can call (`@opencode-ai/plugin`, `tool()` with a Zod raw shape for
+`args` + an `execute(args, context)` function returning a string or
+`{ title?, output, metadata?, attachments? }`). Playwright is itself a Node library —
+so it runs directly inside such a custom tool, no detour needed.
 
-**Planned tool:** `.opencode/tool/playwright-explore.ts`
+**Planned tool:** `.opencode/tools/playwright-explore.ts`
 - `args.action`: `goto | snapshot | screenshot | click | fill`
 - Browser/page as a module-level singleton, so it stays open across multiple skill
   calls (not restarted/re-logged-in on every call).
@@ -176,13 +178,13 @@ runs directly inside such a custom tool, no detour needed.
 - The `playwright` dependency goes into a `package.json` inside the `.opencode/`
   folder; OpenCode installs it automatically at startup.
 
-**Alternative still to be decided:** There is a ready-made Playwright MCP server
+**Alternative considered, not chosen:** There is a ready-made Playwright MCP server
 (Microsoft) that already ships similar tools (navigate, snapshot, click, screenshot)
 and could simply be wired in via `mcp` in `opencode.json` — with no custom code at all.
 Advantage: less maintenance. Disadvantage: less control over whether
-screenshot size/snapshot format complies with our context budget rules. **Current
-leaning:** a custom tool, so format and context budget are guaranteed to match the rest
-of the skill system — final decision only in the implementation phase.
+screenshot size/snapshot format complies with our context budget rules. **Decision:**
+went with the custom tool (`.opencode/tools/playwright-explore.ts`), so format and
+context budget are guaranteed to match the rest of the skill system.
 
 ### 4.3 Login is not a special case — just a fill+click sequence
 
@@ -275,7 +277,7 @@ value happens outside the prompt, in code that already has filesystem access any
 
 | Point in time | Who needs the password | How it's resolved | Does the AI see the value? |
 |---|---|---|---|
-| **Generation** (Playwright logs in to explore authenticated pages) | `.opencode/tool/playwright-explore.ts` (custom tool) | The tool only gets a placeholder from the AI (e.g. `"$SECRET:TEST_PASSWORD"`) as the `fill` value, and resolves it itself from a local, non-versioned secrets file | **No** — placeholder in the prompt, real value only in the tool code |
+| **Generation** (Playwright logs in to explore authenticated pages) | `.opencode/tools/playwright-explore.ts` (custom tool) | The tool only gets a placeholder from the AI (e.g. `"$SECRET:TEST_PASSWORD"`) as the `fill` value, and resolves it itself from a local, non-versioned secrets file | **No** — placeholder in the prompt, real value only in the tool code |
 | **Runtime** (the finished Selenium test logs in) | Java base class (`BaseTest`) | Reads the password itself at runtime from an environment variable/local properties file, never as a literal in the generated `.java` code | **No** — `generate-test` is instructed to always write `TestConfig.get("test.password")`, never the value itself |
 
 ### 6.2 Where the Password Actually Lives
@@ -550,13 +552,17 @@ values (e.g. as constants or in `config/test.properties`), no call to an AI.
 - [x] Written the real `opencode.json` (verified `provider`/`@ai-sdk/openai-compatible`
       syntax against the docs) — see section 7.3. Coupling to `MODEL_SERVER_URL` from
       `bootstrap.config` still not automatic (manual sync for now).
-- [ ] Build `.opencode/tool/playwright-explore.ts` (singleton browser, ARIA snapshot,
+- [x] Built `.opencode/tools/playwright-explore.ts` (singleton browser, ARIA snapshot,
       screenshot path instead of base64, incl. secret placeholder resolution) — see
-      4.2 + 6.3
-- [ ] Decide: custom tool vs. ready-made Playwright MCP server (section 4.2)
+      4.2 + 6.3. Folder corrected to `tools/` (plural) — verified against the installed
+      OpenCode binary, the earlier `tool/` (singular) in this plan was wrong.
+- [x] Decided: custom tool (not the ready-made Playwright MCP server) — implemented in
+      `.opencode/tools/playwright-explore.ts`, see section 4.2.
 - [ ] Set up the `pom.xml` skeleton with Selenium + JUnit 5 + WebDriverManager
 - [ ] Design the Java `TestConfig` class (reads base URL + secrets at runtime, see 6.1)
-- [ ] Write the first SKILL.md: `explore-page`
-- [ ] Write the `check-typography` SKILL.md (see section 10)
-- [ ] Research `references/design-tokens.md` (see section 10.3)
+- [x] Wrote all skill files, including `explore-page` and `check-typography` (see
+      section 10) — see `.opencode/skills/`.
+- [x] Researched `references/oblique-components.md` and `references/design-tokens.md`
+      (see section 10.3) — still marked unverified/needs-review in-file since it's
+      compiled from public docs, not hand-tested against a real Oblique app.
 

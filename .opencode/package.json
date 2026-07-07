@@ -1,0 +1,10 @@
+{
+  "name": "opencodetesting-opencode-extensions",
+  "private": true,
+  "type": "module",
+  "description": "Custom tool dependencies for the AI-powered Java/Selenium test generator. See docs/PLAN.md section 4.2/5.",
+  "dependencies": {
+    "playwright": "^1.61.1",
+    "@opencode-ai/plugin": "^1.17.15"
+  }
+}

@@ -13,12 +13,5 @@
       }
     }
   },
-  "model": "local/devstral-small-2",
-  "agent": {
-    "vision": {
-      "mode": "subagent",
-      "model": "local/ministral-3:3b",
-      "description": "Image-analysis sub-agent — only for visual follow-up questions (see docs/PLAN.md, section 4.1)"
-    }
-  }
+  "model": "local/devstral-small-2"
 }
