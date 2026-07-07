@@ -38,7 +38,8 @@ function resolveValue(value: string, projectDirectory: string): string {
 
 async function getPage(): Promise<Page> {
   if (!browser) {
-    browser = await chromium.launch({ headless: true })
+    // Headed on purpose: the developer watches the exploration live in the browser.
+    browser = await chromium.launch({ headless: false })
   }
   if (!page || page.isClosed()) {
     page = await browser.newPage()
@@ -48,7 +49,7 @@ async function getPage(): Promise<Page> {
 
 export default tool({
   description:
-    "Drives a headless Playwright browser to explore a web app for test generation: navigate (goto), " +
+    "Drives a visible (non-headless) Playwright browser to explore a web app for test generation: navigate (goto), " +
     "capture a compact ARIA snapshot as text (snapshot), take a cropped screenshot saved to disk (screenshot " +
     "— returns only the file path, never inline image data), click an element (click), or fill a form field " +
     "(fill). The fill value may be the placeholder \"$SECRET:NAME\" instead of a real secret — it is resolved " +

@@ -56,7 +56,8 @@ project/
 │   │   ├── generate-test/SKILL.md
 │   │   ├── validate-test/SKILL.md
 │   │   ├── edit-test/SKILL.md
-│   │   └── check-typography/SKILL.md
+│   │   ├── check-typography/SKILL.md
+│   │   └── setup-java-skeleton/SKILL.md   # one-time: pom.xml, TestConfig, BaseTest, folders (verbatim templates)
 │   ├── tools/
 │   │   └── playwright-explore.ts     # custom tool: drives the browser, returns ARIA snapshot + screenshot path
 │   ├── agents/
@@ -168,6 +169,8 @@ so it runs directly inside such a custom tool, no detour needed.
 
 **Planned tool:** `.opencode/tools/playwright-explore.ts`
 - `args.action`: `goto | snapshot | screenshot | click | fill`
+- Browser launches **non-headless** (`headless: false`) by decision (2026-07-07): the
+  developer watches the exploration live in a visible Chromium window.
 - Browser/page as a module-level singleton, so it stays open across multiple skill
   calls (not restarted/re-logged-in on every call).
 - `snapshot` returns Playwright's **ARIA snapshot** (compact, semantic text) instead of
@@ -558,8 +561,12 @@ values (e.g. as constants or in `config/test.properties`), no call to an AI.
       OpenCode binary, the earlier `tool/` (singular) in this plan was wrong.
 - [x] Decided: custom tool (not the ready-made Playwright MCP server) — implemented in
       `.opencode/tools/playwright-explore.ts`, see section 4.2.
-- [ ] Set up the `pom.xml` skeleton with Selenium + JUnit 5 + WebDriverManager
-- [ ] Design the Java `TestConfig` class (reads base URL + secrets at runtime, see 6.1)
+- [x] `pom.xml` skeleton + `TestConfig`/`BaseTest` design: NOT pre-built into the repo —
+      by decision (2026-07-07) this is the agent's own job. A new skill
+      `.opencode/skills/setup-java-skeleton/SKILL.md` contains the complete verbatim
+      templates (pom.xml with Selenium 4 + JUnit 5 + WebDriverManager, TestConfig with
+      env/`.tools/secrets.env` secret resolution, BaseTest) and is run once per project
+      before the first generation, or when `validate-test` finds them missing.
 - [x] Wrote all skill files, including `explore-page` and `check-typography` (see
       section 10) — see `.opencode/skills/`.
 - [x] Researched `references/oblique-components.md` and `references/design-tokens.md`

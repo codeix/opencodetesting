@@ -20,6 +20,9 @@ test and never runs at test time.
   full-page one.
 - Never hand a whole existing file to a skill; pass only the affected excerpt (method
   or class), unless the file is already under ~80 lines.
+- One-time setup: if `pom.xml` or `TestConfig` doesn't exist yet, run
+  `setup-java-skeleton` first (once per project) — otherwise `validate-test` cannot
+  compile anything.
 - Standard chain for "new test": `explore-page` → `component-knowledge` (as needed) →
   `generate-pageobject` → `generate-test` → `validate-test`. On a validation failure,
   loop back to `generate-test` (or `generate-pageobject` if the error is selector-
@@ -64,8 +67,9 @@ No dedicated login skill or OIDC logic is needed — see `docs/PLAN.md` section 
 ## Component/typography references
 
 - `references/oblique-components.md` — Angular Material & Oblique selector/DOM
-  guidance, read by `component-knowledge`. Marks which components are verified vs.
-  still TODO; check source before trusting an unverified entry.
+  guidance, read by `component-knowledge`. Covers every component of the Oblique
+  15.4.0 docs; ✅ entries were verified by driving the live docs examples, ⚠️ entries
+  have no live preview and must be re-checked against the real app's DOM snapshot.
 - `references/design-tokens.md` — typography values, read by `check-typography`. Only
   covers what's actually been verified against a live render; extend it (with source
   and date) rather than guessing new values.

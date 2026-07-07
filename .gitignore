@@ -5,3 +5,9 @@ bootstrap.config
 
 # npm / Playwright (project-local, see PLAN.md section 5)
 .opencode/node_modules/
+
+# Per-project test workspaces (generated test output, not part of this repo)
+workspace/
+
+# Editor swap files
+*.swp
