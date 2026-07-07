@@ -1,0 +1,7 @@
+# Secrets & local-only config — see PLAN.md section 6
+.tools/
+*.env
+bootstrap.config
+
+# npm / Playwright (project-local, see PLAN.md section 5)
+.opencode/node_modules/
