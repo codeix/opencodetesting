@@ -455,9 +455,12 @@ using the `@ai-sdk/openai-compatible` adapter, with models referenced as
 - [ ] Check Ollama version: `devstral-small-2` needs **Ollama 0.13.3+** — make sure
       `bootstrap.sh` loads a sufficiently current version (currently no version check
       in the script).
-- [ ] Check whether the installed Ollama version supports `OLLAMA_CONTEXT_LENGTH`,
-      otherwise find an alternative way to cap the context window (e.g. per-model via
-      `PARAMETER num_ctx` in the `Modelfile`).
+- [x] Runtime context window verified on the live server (2026-07-08 via `/api/ps`):
+      both `devstral-small-2` and `ministral-3:3b` run with **65,536 tokens**. Declared
+      as `limit: { context: 65536 }` per model in `opencode.json` so opencode can track
+      usage and auto-compact — without this, Ollama silently truncates the oldest
+      tokens with no warning to the client. Re-check `/api/ps` if the server's
+      `OLLAMA_CONTEXT_LENGTH`/Modelfile `num_ctx` ever changes, and keep the two in sync.
 - [x] Verified the real `opencode.json` provider syntax against current OpenCode docs
       (section 7.3) — it's a `provider` block using `@ai-sdk/openai-compatible` with
       `provider-id/model-id` references, not the guessed `LOCAL_ENDPOINT`/`local.*`

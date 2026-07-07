@@ -8,8 +8,14 @@
         "baseURL": "http://sriolo-desktop.local:11434/v1"
       },
       "models": {
-        "devstral-small-2": { "name": "Devstral Small 2" },
-        "ministral-3:3b": { "name": "Ministral-3:3b" }
+        "devstral-small-2": {
+          "name": "Devstral Small 2",
+          "limit": { "context": 65536, "output": 8192 }
+        },
+        "ministral-3:3b": {
+          "name": "Ministral-3:3b",
+          "limit": { "context": 65536, "output": 4096 }
+        }
       }
     }
   },
