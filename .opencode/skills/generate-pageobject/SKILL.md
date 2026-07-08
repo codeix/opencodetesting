@@ -38,6 +38,11 @@ component). Target well under ~1500 tokens of input.
      `@FindBy(xpath = "//mat-row[.//mat-cell[text()='APP-2024-001']]//button[@title='Overview']")`.
      Swap `mat-row`/`mat-cell` for `tr`/`td` if the page uses the native `<table
      mat-table>` shape instead (see `component-knowledge`).
+   - **Never write `:contains(...)` in a `@FindBy(css = ...)`.** It's a
+     jQuery/Sizzle pseudo-class, not real CSS — Selenium's CSS engine is the
+     browser's native `querySelector`, which throws `InvalidSelectorException` at
+     runtime on it (compiles fine, fails only when the test actually runs). Any
+     text-based match is XPath, never CSS: `//button[normalize-space()='Cancel']`.
 3. Write one `src/test/java/pages/<Name>Page.java` class: `@FindBy`-annotated fields
    plus action methods only (no assertions here). No `Thread.sleep` — rely on
    Selenium's built-in waits. **Constructor takes `WebDriver driver` and stores it as

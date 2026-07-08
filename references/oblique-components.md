@@ -56,6 +56,20 @@ whole file into a prompt at once (see `.opencode/skills/component-knowledge/SKIL
    asserting. Don't assert on a label that might contain an icon without doing
    one of these — the assertion will intermittently look like it's testing the
    wrong string.
+6. **A reactive form pre-filled from an async source races past implicit wait
+   (verified).** When a form's existing values come from an API/service call
+   rather than being in the initial template, the `<input>`/`mat-select`/etc.
+   elements exist in the DOM immediately — implicit wait and
+   `presenceOfElementLocated` are satisfied right away — but their *value* is
+   still empty/default until the async `patchValue` lands, typically a few
+   hundred ms later. A read immediately after navigation intermittently gets the
+   pre-patch empty value instead of the real one. Don't rely on `data-testid`-only
+   waits here; explicitly wait for a condition that only becomes true once the
+   patch has landed, e.g.
+   `wait.until(d -> !d.findElement(By.cssSelector("input[formcontrolname='...']")).getAttribute("value").isBlank())`
+   on any one known-populated field, once per page load — Angular typically
+   patches the whole form in a single call, so one field's value becoming
+   non-blank is a reliable signal the rest are populated too.
 
 ---
 
@@ -185,6 +199,13 @@ ob-collapse.ob-collapse
 - Note: `aria-modal` was `"false"` on the verified instance — don't key on it.
 - Java wait: `ExpectedConditions.presenceOfElementLocated(By.cssSelector("mat-dialog-container[role='dialog']"))`
   then `ExpectedConditions.stalenessOf(dialogEl)` after closing.
+- If a page object instead exposes a custom `isOpen()`-style boolean (e.g. for a
+  `WebDriverWait.until(d -> !dialog.isOpen())` poll) rather than using
+  `ExpectedConditions.stalenessOf` directly: that method **must** catch
+  `StaleElementReferenceException` itself and return `false` — a poll lambda that
+  lets the exception propagate fails the whole wait instead of just returning
+  false on one iteration (verified failure mode: the close animation removes the
+  node mid-poll).
 
 ## Error messages — `obErrorMessages` on `mat-form-field` ✅
 
