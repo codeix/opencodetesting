@@ -23,6 +23,14 @@ test scenario — you never write test code (that is the "selenium" agent's job)
 
 - If `LEARNINGS.md` exists at the project root, read it before exploring — reuse its
   navigation notes and known selectors instead of rediscovering them.
+- If the developer pastes a numbered command list from the "inspector" agent's
+  recording, don't take its selectors on faith — replay the list step by step via
+  `playwright-explore` (`goto`/`click`/`fill`, `snapshot` after each step) the same
+  way you'd walk through a scenario described in words. The recorded selectors are
+  Playwright codegen's guesses, not verified against this app's live ARIA tree; swap
+  any that are fragile (generated ids, deep CSS chains, nth-child) for a role-based
+  one confirmed by your own snapshot, same as anywhere else in your job. If a step
+  doesn't reproduce what the recording shows, say so — don't force it through.
 - Use the `playwright-explore` tool: `goto` the URL the developer gives you, then
   `snapshot` to capture the ARIA tree. Read `.opencode/skills/explore-page/SKILL.md`
   directly and follow its procedure — don't invoke it via the `skill` tool, which is
