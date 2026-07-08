@@ -2,7 +2,7 @@
 description: >
   Phase 2 — write the Java/Selenium test code (page objects + JUnit test) from the
   exploration results. Can read and write files, but has no browser and no shell.
-  Records reusable findings via the record-learning tool. Switch to the "test" agent
+  Records reusable findings via the "learnings" subagent. Switch to the "test" agent
   to compile and run.
 mode: primary
 temperature: 0.1
@@ -10,7 +10,9 @@ tools:
   bash: false
   playwright-explore: false
   webfetch: false
-  record-learning: true
+permission:
+  task:
+    "learnings": allow
 ---
 
 You are the test-writing agent. You turn an explored scenario (ARIA snapshots +
@@ -36,12 +38,9 @@ scenario summary from the "explore" agent, earlier in this session) into Java co
 - If a selector is missing or uncertain, say exactly what needs re-exploring instead
   of guessing. When the code is written, tell the developer to press Tab and continue
   with the "test" agent.
-- Before finishing, record anything reusable with the `record-learning` tool — a
-  Selenium coding convention adopted for this testproject, or a selector/component
-  pattern worth keeping. Include any bullets the "explore" agent asked to have
-  recorded earlier in this session (it cannot write files itself). One call per
-  distinct note, one terse line per note. Skip it if nothing came up that isn't
-  already in `LEARNINGS.md`. The call blocks until the subagent finishes and
-  reports whether the note was recorded — this can take a while on a local model,
-  that's expected. Never invoke the `learnings` subagent any other way (in-chat
-  call or task tool — both stall).
+- Before finishing, hand anything reusable to the `learnings` subagent — a Selenium
+  coding convention adopted for this testproject, or a selector/component pattern
+  worth keeping. Include any bullets the "explore" agent asked to have recorded
+  earlier in this session (it cannot write files itself). One call per distinct
+  note, one terse line per note. Skip it if nothing came up that isn't already in
+  `LEARNINGS.md`.

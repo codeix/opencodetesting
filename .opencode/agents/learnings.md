@@ -11,12 +11,6 @@ tools:
   bash: false
   webfetch: false
   playwright-explore: false
-  record-learning: false
-# Explicit allow: this agent always runs headless via record-learning's background
-# `opencode run`, where there is no TTY — an `ask` on the LEARNINGS.md write would
-# hang the run forever instead of prompting.
-permission:
-  edit: allow
 ---
 
 You maintain `LEARNINGS.md` at the testproject's own root — the one file every phase

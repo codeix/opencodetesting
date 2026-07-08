@@ -7,8 +7,6 @@ description: >
   default model configured for the local provider (system settings) — no model is
   pinned here.
 mode: subagent
-tools:
-  record-learning: false
 permission:
   edit: deny
   bash: deny
