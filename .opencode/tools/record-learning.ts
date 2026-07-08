@@ -1,6 +1,6 @@
 import { tool } from "@opencode-ai/plugin"
 import { spawn } from "node:child_process"
-import { existsSync } from "node:fs"
+import { closeSync, existsSync, mkdirSync, openSync, writeSync } from "node:fs"
 import { join } from "node:path"
 
 // Fire-and-forget bridge to the "learnings" subagent. OpenCode's in-chat task tool
@@ -40,20 +40,37 @@ export default tool({
       )
     }
 
-    // `timeout 300`: a non-interactive `opencode run` has no TTY, so a stray `ask`
+    // The background run's output goes to .tools/learnings.log (gitignored, same
+    // place as recordings/secrets) — with a single-slot local model server the run
+    // queues behind the interactive session, and without a log a failure there is
+    // undiagnosable. The fd is a file, not a pipe, so inheriting it can't re-create
+    // the pipe-wait hang from opencode#20902; the parent closes its copy right away.
+    const logDir = join(context.directory, ".tools")
+    mkdirSync(logDir, { recursive: true })
+    const logPath = join(logDir, "learnings.log")
+    const log = openSync(logPath, "a")
+    writeSync(log, `\n--- ${new Date().toISOString()} record-learning: ${note}\n`)
+
+    // `timeout 900`: a non-interactive `opencode run` has no TTY, so a stray `ask`
     // permission prompt would hang it forever (root-caused in log.md's Known
-    // Gotchas). The cap turns a hung run into a self-cleaning one.
-    // detached + stdio:"ignore" + unref(): the child gets its own process group and
-    // no inherited pipes, so it survives this session ending and nothing waits on it.
+    // Gotchas). Generous cap on purpose: on a single-slot model server the run
+    // first waits for the interactive session to go idle, then needs its own
+    // local-model turn — 300s proved too tight for that in practice.
+    // detached + unref(): the child gets its own process group, survives this
+    // session ending, and nothing waits on it.
     // cwd must be the testproject (not the shared clone) — that's where the
     // learnings agent resolves LEARNINGS.md (log.md pattern rule 3).
     const child = spawn(
       "timeout",
-      ["300", "opencode", "run", "--agent", "learnings", note],
-      { cwd: context.directory, detached: true, stdio: "ignore" },
+      ["900", "opencode", "run", "--agent", "learnings", note],
+      { cwd: context.directory, detached: true, stdio: ["ignore", log, log] },
     )
     child.unref()
+    closeSync(log)
 
-    return `Note handed to the learnings subagent (background pid ${child.pid}). Do not wait or retry.`
+    return (
+      `Note handed to the learnings subagent (background pid ${child.pid}). Do not wait or retry. ` +
+      `If LEARNINGS.md doesn't update, the developer can check ${logPath}.`
+    )
   },
 })
