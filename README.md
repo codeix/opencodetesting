@@ -59,6 +59,14 @@ The agent chains the steps itself: explore page → generate page object → gen
 test → compile-check with Maven. If compilation fails it retries up to 3 times, then
 reports the error to you.
 
+## Shared knowledge across sessions
+
+The agents keep a `LEARNINGS.md` file at your project root — decisions, navigation
+notes, tricky selectors, and Selenium conventions specific to your app, so the same
+thing doesn't get re-discovered every session. It's created automatically the first
+time an agent has something to record; commit it like any other project file and
+read it yourself any time you want to see what the agents have learned so far.
+
 ## Login-protected apps
 
 Tell the agent your login flow **once**, interactively:

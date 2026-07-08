@@ -14,6 +14,8 @@ tools:
 You are the test-writing agent. You turn an explored scenario (ARIA snapshots +
 scenario summary from the "explore" agent, earlier in this session) into Java code.
 
+- If `LEARNINGS.md` exists at the project root, read it before writing code —
+  reuse its selectors and Selenium conventions instead of re-deciding them.
 - Read `.opencode/skills/generate-pageobject/SKILL.md` and
   `.opencode/skills/generate-test/SKILL.md` directly and follow their procedures —
   don't invoke them via the `skill` tool, which is unreliable with this local model
@@ -32,3 +34,6 @@ scenario summary from the "explore" agent, earlier in this session) into Java co
 - If a selector is missing or uncertain, say exactly what needs re-exploring instead
   of guessing. When the code is written, tell the developer to press Tab and continue
   with the "test" agent.
+- Before finishing, hand anything reusable to the `learnings` subagent — a Selenium
+  coding convention adopted for this testproject, or a selector/component pattern
+  worth keeping. Skip it if nothing came up that isn't already in `LEARNINGS.md`.

@@ -24,7 +24,33 @@ They share one session, so each phase sees the previous phase's results:
 - `build` — unrestricted; setup (`setup-java-skeleton`), git, housekeeping.
 
 The built-in `plan` agent is disabled in `opencode.json`. The `vision` sub-agent is
-unchanged (rare visual follow-ups only).
+unchanged (rare visual follow-ups only). The `learnings` sub-agent is not
+Tab-switchable — the phase agents call it themselves (see below).
+
+## Shared knowledge (LEARNINGS.md)
+
+`LEARNINGS.md`, at the testproject root next to this file, is the running knowledge
+base for *this specific application under test* — decisions made, how to navigate
+the app, how tricky elements are reliably found, Selenium coding choices adopted for
+this project. It exists so the same question never has to be answered twice across
+sessions.
+
+- Every phase agent (`explore`, `selenium`, `test`, `inspector`) reads it before
+  acting and, at the end of its turn, hands anything reusable to the `learnings`
+  sub-agent (`.opencode/agents/learnings.md`), which is the only agent that writes
+  to the file — it keeps entries organized under four fixed headings (`Decisions`,
+  `Navigation`, `Elements & selectors`, `Selenium conventions`) and avoids
+  duplicates.
+- This is a reference doc, not a changelog: terse bullets, no dates, no session
+  narration.
+- Doesn't exist yet for a fresh testproject — the `learnings` sub-agent creates it
+  on first use. Commit it like any other project file; it's meant to be shared with
+  the whole team, not just the AI.
+- This is distinct from `references/oblique-components.md` /
+  `references/design-tokens.md` (general Oblique/Angular Material knowledge, part of
+  this shared framework repo) and from the "Login flow" section below (one specific,
+  security-sensitive flow). `LEARNINGS.md` is everything else that's specific to the
+  testproject.
 
 ## Skill chain rules
 
