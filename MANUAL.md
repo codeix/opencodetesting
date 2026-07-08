@@ -81,6 +81,17 @@ Configuration (base URL, username) lives in `config/test.properties`. The passwo
 comes from the `TEST_PASSWORD` environment variable or `.tools/secrets.env` — it is
 never in a `.java` file or in git.
 
+On a machine with no system Chrome install (CI runners, sandboxed dev containers),
+point `BaseTest` at any Chrome/Chromium binary instead:
+
+```bash
+export CHROME_BIN=/path/to/chrome                # e.g. a CI cache, or Playwright's own
+export CHROME_DRIVER_VERSION=<matching version>  # only if it doesn't match WebDriverManager's default (latest)
+mvn test
+```
+
+Both are optional and unset by default — a normal system Chrome install needs neither.
+
 ## Rules of thumb
 
 - One request = one test scenario. Small asks give better results — the local models

@@ -78,11 +78,18 @@ export default tool({
     switch (args.action) {
       case "goto": {
         if (!args.url) throw new Error("action=goto requires 'url'")
-        await p.goto(args.url, { waitUntil: "domcontentloaded" })
+        // networkidle, not domcontentloaded: SPAs (Angular/React/Vue) fetch their
+        // data after the initial DOM is ready, so domcontentloaded snapshots
+        // intermittently caught an empty/loading state instead of real content.
+        await p.goto(args.url, { waitUntil: "networkidle" })
         return `Navigated to ${args.url}`
       }
 
       case "snapshot": {
+        // Bounded settle wait: SPAs can still be mid-fetch right after a click/goto
+        // resolves. Non-throwing — apps that poll/keep a socket open would never go
+        // idle, so this must not block the snapshot indefinitely.
+        await p.waitForLoadState("networkidle", { timeout: 3000 }).catch(() => {})
         return await p.locator("body").ariaSnapshot()
       }
 

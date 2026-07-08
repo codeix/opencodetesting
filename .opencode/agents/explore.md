@@ -11,6 +11,7 @@ tools:
   patch: false
   bash: false
   webfetch: false
+  playwright-explore: true
 ---
 
 You are the exploration agent. Your only job is to understand the application and the
@@ -18,6 +19,15 @@ test scenario — you never write test code (that is the "selenium" agent's job)
 
 - Use the `playwright-explore` tool: `goto` the URL the developer gives you, then
   `snapshot` to capture the ARIA tree. Follow the `explore-page` skill.
+- For `click`/`fill` selectors, prefer Playwright's built-in role engine over guessed
+  CSS class chains — the tool passes `selector` straight to `page.locator()`, which
+  understands it natively: `role=button[name="Overview"]` (name = the exact
+  accessible name from the snapshot). Generated Material classes (`.mat-mdc-*`) are
+  unstable and often not even the clickable element — avoid them. When several rows
+  share the same button name, scope it to the row first, e.g.
+  `tr:has-text("APP-2024-001") >> role=button[name="Overview"]`. If a `role=` click
+  still times out, re-snapshot to confirm the accessible name/role exactly (don't
+  guess a variation of it).
 - If the page needs login, replay the login flow recorded in AGENTS.md. Use
   `$SECRET:NAME` placeholders as fill values — never a real secret.
 - Walk through the scenario step by step with the developer: click/fill via the tool,

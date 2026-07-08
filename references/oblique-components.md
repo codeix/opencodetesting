@@ -43,6 +43,19 @@ whole file into a prompt at once (see `.opencode/skills/component-knowledge/SKIL
    state reads, not the styled wrapper.
 4. **Waits:** use explicit `WebDriverWait` on the conditions given per component
    (attribute change, presence in overlay, detachment). Never `Thread.sleep`.
+5. **`mat-icon` pollutes `.getText()` with ligature words (verified).** Material
+   Icons font icons render as literal text nodes (`<mat-icon>info</mat-icon>` →
+   the string `"info"`), so any ancestor's `.getText()`/`.textContent` picks up
+   the icon name mixed into the visible label — e.g. a tab labelled "Overview"
+   with a leading icon reads back as `"info\nOverview"`; a table row with
+   icon-only action buttons reads back with `"visibility\ndelete"` appended.
+   Two fixes, pick whichever fits: (a) scope the read to exclude the icon
+   region entirely (e.g. `mat-cell:not(.mat-column-actions)` for an actions
+   column), or (b) read the container's text, find any child
+   `mat-icon`/`.material-icons` element's own text, and strip it before
+   asserting. Don't assert on a label that might contain an icon without doing
+   one of these — the assertion will intermittently look like it's testing the
+   wrong string.
 
 ---
 
@@ -110,8 +123,16 @@ button[obbutton=primary|secondary|tertiary].ob-button.ob-button-{variant}
   `disabledInteractive` → button stays focusable with `aria-disabled="true"` and can
   show a tooltip. Check **both** when asserting "button is disabled":
   `btn.getAttribute("disabled") != null || "true".equals(btn.getAttribute("aria-disabled"))`.
-- Icon-only buttons use `mat-icon-button` and must have an accessible label
-  (tooltip-linked `aria-labelledby`) — locate by `aria-label`/labelledby text.
+- Icon-only buttons use `mat-icon-button` and must have an accessible label, but the
+  mechanism varies by app — **check both, don't assume one:**
+  - Material's tooltip-linked `aria-labelledby` (as originally documented here).
+  - A plain `title` attribute with no `aria-label`/`aria-labelledby` at all
+    (verified on a live app: `<button mat-icon-button title="Overview">`) — the
+    browser derives the accessible name from `title` per HTML-AAM, so an ARIA
+    role/name lookup (Playwright's `role=` engine, or a Selenium accessible-name
+    check) still finds it, but a selector that only checks `aria-label` will not.
+    `button[title='Overview']` is a reliable, simple CSS attribute selector for
+    this case — prefer it over guessing Material's generated classes.
 - Links can be `a.ob-button` (same classes on `<a>`).
 
 ## Card — `mat-card` ✅
@@ -373,15 +394,38 @@ ob-notification.ob-notification-container.ob-{top|bottom}-{left|right}
 
 ## Table (Material) — `mat-table` + `ob-table` ✅
 
-- `table.mat-mdc-table[role='table']`; rows `tr.mat-mdc-row[role='row']`.
-- **Best column hook:** every cell carries `mat-column-<columnDefName>` (e.g.
-  `td.mat-column-symbol`, verified) — semantic, derived from the app's column
+Angular Material's table directive has **two DOM shapes** depending on the host
+element the app used — check which one before writing any `tr`/`td` selector, they
+are not interchangeable:
+
+1. **Native table host** (`<table mat-table>`): renders real HTML
+   `table.mat-mdc-table[role='table']` with real `tr.mat-mdc-row[role='row']` and
+   `td.mat-mdc-cell[role='cell']` — normal CSS type selectors (`tr`, `td`) work.
+2. **Flex-layout host** (`<mat-table>`, no `<table>` tag — verified on a live app):
+   renders **custom elements**, not real table tags:
+   `mat-table[role='table']` → `mat-header-row[role='row']` /
+   `mat-row[role='row']` → `mat-header-cell[role='columnheader']` /
+   `mat-cell[role='cell']`. A `tr`/`td` CSS selector matches **zero** elements here
+   and any locator built on it will silently time out instead of erroring — if a
+   row/cell selector times out, check `mat-row`/`mat-cell` before assuming the
+   selector text is wrong.
+- **Best column hook (both shapes):** every cell carries `mat-column-<columnDefName>`
+  (e.g. `.mat-column-status`, verified) — semantic, derived from the app's column
   definition, stable. Use it instead of cell indexes.
-- Sorting: click `th.mat-sort-header`; assert `aria-sort` on the `th` — verified,
-  but the cycle observed was `descending → none` (initial state dependent):
-  **assert the concrete value, never assume ascending-first.**
+- **Row actions (buttons/links inside a cell), scope to the row first**, don't rely
+  on a single unscoped role selector when multiple rows repeat the same button name:
+  `` role=row >> text=APP-2024-001 `` is fragile across shapes; prefer chaining
+  Playwright's ARIA role engine directly, e.g.
+  `` mat-row:has-text("<row-identifying-cell-text>") >> role=button[name="Overview"] ``
+  (swap `mat-row` for `tr` on the native-table shape). Plain `role=button[name="..."]`
+  with no row scope returns **one locator per matching row** — fine for `.count()`,
+  but `.click()` on it needs the scope or a `.nth(i)`.
+- Sorting: click `th.mat-sort-header` (native shape) — verified, but the cycle
+  observed was `descending → none` (initial state dependent):
+  **assert the concrete value, never assume ascending-first.** Not yet verified on
+  the flex-layout shape's sort header element.
 - Body rows also may contain `th[role=columnheader]` as row headers (docs example
-  does) — same `td,th` advice as HTML table.
+  does) — same `td,th` advice as HTML table (native shape only).
 - Combine with **Paginator** and `mat-form-field` filter inputs as documented above.
 
 ## Tabs — `mat-tab-group` ✅

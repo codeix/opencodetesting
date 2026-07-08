@@ -88,6 +88,11 @@ The list of files created (or skipped as already present) plus the result line o
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>3.5.2</version>
         <configuration>
@@ -182,6 +187,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
 
 /** Base class for all generated tests: real Chrome, no hardcoded waits. */
 public abstract class BaseTest {
@@ -190,8 +196,22 @@ public abstract class BaseTest {
 
     @BeforeEach
     void startBrowser() {
-        WebDriverManager.chromedriver().setup();
-        driver = new ChromeDriver();
+        ChromeOptions options = new ChromeOptions();
+        // CI/sandboxed runners without a system Chrome install can point this at any
+        // Chrome/Chromium binary (e.g. a CI cache) without touching test code. If that
+        // binary's version doesn't match WebDriverManager's default (latest) driver,
+        // CHROME_DRIVER_VERSION pins the matching driver explicitly.
+        String chromeBinary = System.getenv("CHROME_BIN");
+        String chromeDriverVersion = System.getenv("CHROME_DRIVER_VERSION");
+        WebDriverManager wdm = WebDriverManager.chromedriver();
+        if (chromeDriverVersion != null && !chromeDriverVersion.isBlank()) {
+            wdm.driverVersion(chromeDriverVersion);
+        }
+        wdm.setup();
+        if (chromeBinary != null && !chromeBinary.isBlank()) {
+            options.setBinary(chromeBinary);
+        }
+        driver = new ChromeDriver(options);
         driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(5));
         driver.get(TestConfig.get("base.url"));
     }
