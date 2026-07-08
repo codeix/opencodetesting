@@ -54,9 +54,15 @@ anything — a stray `cd` earlier in a shell session silently breaks every later
   empty/loading state. Switched to `networkidle` + a bounded settle wait in
   `snapshot`.
 - **The `skill` tool itself is unreliable** — even with permission granted, the model
-  sometimes produces a near-empty response instead of invoking it. Workaround: tell
-  the agent to `Read` the `SKILL.md` file directly instead of relying on it to
-  invoke the skill tool.
+  sometimes announces intent to use a skill and never completes the call, then
+  repeats the same announcement verbatim on the next turn with no progress (looks
+  like a stall/context-limit loop from the outside; verified it isn't — happens at
+  as low as 5% context usage). **Now the default, not just a manual workaround**:
+  `AGENTS.md`'s "Skill chain rules" plus the `explore`/`selenium`/`test` agent
+  prompts all now say to `Read` the `SKILL.md` file directly instead of invoking the
+  skill tool. Verified empirically that AGENTS.md content really does reach every
+  agent by default (asked `build` a question only answerable from AGENTS.md's
+  content, got the right answer with no extra config).
 - **This sandbox has no system Chrome**, only Playwright's bundled Chromium.
   `BaseTest` now reads optional `CHROME_BIN` / `CHROME_DRIVER_VERSION` env vars (see
   `MANUAL.md`) — unset on a machine with a normal Chrome install.
