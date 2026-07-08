@@ -16,7 +16,7 @@ tools:
 permission:
   bash:
     "*": deny
-    "opencode run --agent learnings *": allow
+    "nohup opencode run --agent learnings *": allow
 ---
 
 You are the exploration agent. Your only job is to understand the application and the
@@ -56,7 +56,7 @@ test scenario — you never write test code (that is the "selenium" agent's job)
   Don't use the in-chat subagent/task-tool call — it's unreliable (announces intent,
   never completes). Instead spawn it as a background process and don't wait on it:
 
-      opencode run --agent learnings "<one-line note>" >/dev/null 2>&1 &
+      nohup opencode run --agent learnings "<one-line note>" >/dev/null 2>&1 &
 
   Fire it and move straight to your summary. Don't poll for output, don't block on
   it, don't retry. One call per distinct note.

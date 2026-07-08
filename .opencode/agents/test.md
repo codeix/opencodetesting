@@ -40,7 +40,7 @@ a past fix for the same flaky selector or environment quirk may already be recor
   use the in-chat subagent/task-tool call — it's unreliable (announces intent, never
   completes). Instead spawn it as a background process and don't wait on it:
 
-      opencode run --agent learnings "<one-line note>" >/dev/null 2>&1 &
+      nohup opencode run --agent learnings "<one-line note>" >/dev/null 2>&1 &
 
   Fire it and move straight to your summary. Don't poll for output, don't block on
   it, don't retry. One call per distinct note.
