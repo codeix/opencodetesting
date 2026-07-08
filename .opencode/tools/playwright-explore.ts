@@ -51,17 +51,19 @@ export default tool({
   description:
     "Drives a visible (non-headless) Playwright browser to explore a web app for test generation: navigate (goto), " +
     "capture a compact ARIA snapshot as text (snapshot), take a cropped screenshot saved to disk (screenshot " +
-    "— returns only the file path, never inline image data), click an element (click), or fill a form field " +
-    "(fill). The fill value may be the placeholder \"$SECRET:NAME\" instead of a real secret — it is resolved " +
-    "from .tools/secrets.env inside this tool and never appears in the prompt or the tool's return value. " +
-    "Browser/page are a singleton and persist across calls in the same session, so a login flow only needs " +
-    "to run once. Always prefer 'snapshot' text over 'screenshot' — only screenshot, and only a cropped " +
-    "region, when the ARIA snapshot leaves a specific element genuinely ambiguous.",
+    "— returns only the file path, never inline image data), click an element (click), fill a form field " +
+    "(fill), or run arbitrary JavaScript in the page context (evaluate). The fill value may be the placeholder " +
+    "\"$SECRET:NAME\" instead of a real secret — it is resolved from .tools/secrets.env inside this tool and " +
+    "never appears in the prompt or the tool's return value. Browser/page are a singleton and persist across " +
+    "calls in the same session, so a login flow only needs to run once. Always prefer 'snapshot' text over " +
+    "'screenshot' — only screenshot, and only a cropped region, when the ARIA snapshot leaves a specific " +
+    "element genuinely ambiguous.",
   args: {
-    action: tool.schema.enum(["goto", "snapshot", "screenshot", "click", "fill"]).describe("Which browser action to perform."),
+    action: tool.schema.enum(["goto", "snapshot", "screenshot", "click", "fill", "evaluate"]).describe("Which browser action to perform."),
     url: tool.schema.string().optional().describe("Target URL. Required for action=goto."),
     selector: tool.schema.string().optional().describe("CSS selector of the target element. Required for action=click and action=fill."),
     value: tool.schema.string().optional().describe("Text to fill, or a \"$SECRET:NAME\" placeholder. Required for action=fill."),
+    code: tool.schema.string().optional().describe("JavaScript to run in the page context. May contain statements and a 'return' to produce a value. Required for action=evaluate."),
     clip: tool.schema
       .object({
         x: tool.schema.number(),
@@ -113,6 +115,15 @@ export default tool({
         const resolved = resolveValue(args.value, context.directory)
         await p.locator(args.selector).fill(resolved)
         return `Filled ${args.selector}`
+      }
+
+      case "evaluate": {
+        if (args.code === undefined) throw new Error("action=evaluate requires 'code'")
+        // Wrapped in `new Function` (rather than passing the string straight to
+        // page.evaluate) so multi-statement code with an explicit `return` works,
+        // not just single expressions.
+        const result = await p.evaluate((code) => new Function(code)(), args.code)
+        return result === undefined ? "undefined" : JSON.stringify(result)
       }
 
       default: {

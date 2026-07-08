@@ -173,7 +173,10 @@ function the AI can call (`@opencode-ai/plugin`, `tool()` with a Zod raw shape f
 so it runs directly inside such a custom tool, no detour needed.
 
 **Planned tool:** `.opencode/tools/playwright-explore.ts`
-- `args.action`: `goto | snapshot | screenshot | click | fill`
+- `args.action`: `goto | snapshot | screenshot | click | fill | evaluate`
+  (`evaluate` runs arbitrary JavaScript in the page context via `new Function`, for
+  cases the built-in actions can't cover — e.g. reading a computed style or a value
+  off `window`.)
 - Browser launches **non-headless** (`headless: false`) by decision (2026-07-07): the
   developer watches the exploration live in a visible Chromium window.
 - Browser/page as a module-level singleton, so it stays open across multiple skill
