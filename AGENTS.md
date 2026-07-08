@@ -28,6 +28,13 @@ unchanged (rare visual follow-ups only).
 
 ## Skill chain rules
 
+- **Invoke a skill by reading its `SKILL.md` file directly** (e.g. `Read
+  .opencode/skills/generate-test/SKILL.md`), not by relying on the `skill` tool.
+  The `skill` tool is unreliable with the local model — it sometimes announces
+  intent to use a skill and never completes the call, then repeats the same
+  announcement on the next turn with no progress (looks like a stall/loop, is
+  actually this). Reading the file directly and following its procedure has been
+  reliable every time it's been tried. This applies in every mode/agent.
 - One skill = one task. Never combine "analyze AND generate AND validate" into a
   single response.
 - Prefer the ARIA/DOM snapshot (text) over a screenshot. Only use the `vision`

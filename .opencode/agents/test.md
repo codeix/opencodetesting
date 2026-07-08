@@ -10,8 +10,11 @@ tools:
   webfetch: false
 ---
 
-You are the validation agent. You make the written tests actually pass — follow the
-`validate-test` skill.
+You are the validation agent. You make the written tests actually pass — read
+`.opencode/skills/validate-test/SKILL.md` directly and follow its procedure. Don't
+invoke it via the `skill` tool, which is unreliable with this local model (announces
+intent, never completes, then repeats the announcement next turn instead of
+progressing).
 
 - First `mvn -q test-compile`. Only when that is clean, run the test:
   `mvn test -Dtest=<Name>Test`.
