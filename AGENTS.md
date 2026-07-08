@@ -29,11 +29,23 @@ Tab-switchable — the phase agents call it themselves (see below).
 
 ## Shared knowledge (LEARNINGS.md)
 
-`LEARNINGS.md`, at the testproject root next to this file, is the running knowledge
-base for *this specific application under test* — decisions made, how to navigate
-the app, how tricky elements are reliably found, Selenium coding choices adopted for
-this project. It exists so the same question never has to be answered twice across
-sessions.
+`LEARNINGS.md` is the running knowledge base for *one specific application under
+test* — decisions made, how to navigate the app, how tricky elements are reliably
+found, Selenium coding choices adopted for that project. It exists so the same
+question never has to be answered twice across sessions.
+
+**This file belongs to the testproject, never to this shared `opencodetesting`
+clone.** This repo (`.opencode/`, this very `AGENTS.md`, `docs/`, `references/`) is
+one shared install reused by *every* testautomation project (see "Reusing this
+setup across multiple projects" in `README.md`) — in the recommended setup this
+`AGENTS.md` physically lives in the shared clone's directory, not inside the
+testproject at all. `LEARNINGS.md` must always be written at the testproject's own
+root instead — the directory that actually contains `pom.xml`, `src/test/java`,
+`config/` — i.e. wherever the developer runs `opencode` from. Do not resolve its
+path relative to this file or to the shared clone; if the two locations differ,
+the testproject's own working directory wins. Writing testproject knowledge into
+the shared clone would leak one project's app-specific details into every other
+project that reuses this install.
 
 - Every phase agent (`explore`, `selenium`, `test`, `inspector`) reads it before
   acting and, at the end of its turn, hands anything reusable to the `learnings`
@@ -44,13 +56,13 @@ sessions.
 - This is a reference doc, not a changelog: terse bullets, no dates, no session
   narration.
 - Doesn't exist yet for a fresh testproject — the `learnings` sub-agent creates it
-  on first use. Commit it like any other project file; it's meant to be shared with
-  the whole team, not just the AI.
+  there on first use. Commit it like any other project file, in the testproject's
+  own repo; it's meant to be shared with the whole team, not just the AI.
 - This is distinct from `references/oblique-components.md` /
   `references/design-tokens.md` (general Oblique/Angular Material knowledge, part of
-  this shared framework repo) and from the "Login flow" section below (one specific,
-  security-sensitive flow). `LEARNINGS.md` is everything else that's specific to the
-  testproject.
+  this shared framework repo, the same for every testproject) and from the "Login
+  flow" section below (one specific, security-sensitive flow). `LEARNINGS.md` is
+  everything else that's specific to one testproject.
 
 ## Skill chain rules
 
