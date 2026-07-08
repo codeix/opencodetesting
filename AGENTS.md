@@ -20,11 +20,55 @@ They share one session, so each phase sees the previous phase's results:
 - `selenium` — write page objects + tests from the exploration (no browser, no shell).
 - `test` — `mvn` compile/run, analyze failures, auto-fix (max 3 attempts, then report).
 - `inspector` — launch Playwright codegen so the developer records a flow themselves,
-  then translate the recording (login flow → AGENTS.md, scenario → selenium steps).
+  then translate the recording (login flow → LEARNINGS.md, scenario → selenium steps).
 - `build` — unrestricted; setup (`setup-java-skeleton`), git, housekeeping.
 
 The built-in `plan` agent is disabled in `opencode.json`. The `vision` sub-agent is
-unchanged (rare visual follow-ups only).
+unchanged (rare visual follow-ups only). The `learnings` sub-agent is not
+Tab-switchable — the phase agents call it themselves (see below).
+
+## Shared knowledge (LEARNINGS.md)
+
+`LEARNINGS.md` is the running knowledge base for *one specific application under
+test* — decisions made, how to navigate the app, how tricky elements are reliably
+found, Selenium coding choices adopted for that project. It exists so the same
+question never has to be answered twice across sessions.
+
+**This file belongs to the testproject, never to this shared `opencodetesting`
+clone.** This repo (`.opencode/`, this very `AGENTS.md`, `docs/`, `references/`) is
+one shared install reused by *every* testautomation project (see "Reusing this
+setup across multiple projects" in `README.md`) — in the recommended setup this
+`AGENTS.md` physically lives in the shared clone's directory, not inside the
+testproject at all. `LEARNINGS.md` must always be written at the testproject's own
+root instead — the directory that actually contains `pom.xml`, `src/test/java`,
+`config/` — i.e. wherever the developer runs `opencode` from. Do not resolve its
+path relative to this file or to the shared clone; if the two locations differ,
+the testproject's own working directory wins. Writing testproject knowledge into
+the shared clone would leak one project's app-specific details into every other
+project that reuses this install.
+
+- Every phase agent (`explore`, `selenium`, `test`, `inspector`) reads it before
+  acting and, at the end of its turn, hands anything reusable to the `learnings`
+  sub-agent (`.opencode/agents/learnings.md`), which is normally the only agent
+  that writes to the file — it keeps entries organized under five fixed headings
+  (`Decisions`, `Navigation`, `Login flow`, `Elements & selectors`,
+  `Selenium conventions`) and avoids duplicates. If a sub-agent call doesn't
+  complete (the known stall pattern — see "Skill chain rules" below), an agent
+  with write access appends the entry itself in the same format; `explore` (which
+  cannot write) states it in its reply so the developer or the next phase agent
+  records it.
+- This is a reference doc, not a changelog: terse bullets, no dates, no session
+  narration. Keep the whole file under ~80 lines — every phase agent loads it each
+  turn, and the local model's context is small: merge overlapping bullets and drop
+  superseded ones instead of growing past that.
+- Doesn't exist yet for a fresh testproject — the `learnings` sub-agent creates it
+  there on first use. Commit it like any other project file, in the testproject's
+  own repo; it's meant to be shared with the whole team, not just the AI.
+- This is distinct from `references/oblique-components.md` /
+  `references/design-tokens.md` (general Oblique/Angular Material knowledge, part of
+  this shared framework repo, the same for every testproject). `LEARNINGS.md` is
+  everything that's specific to one testproject — including its login flow (see
+  "Login flow" below).
 
 ## Skill chain rules
 
@@ -73,9 +117,12 @@ unchanged (rare visual follow-ups only).
 
 ## Login flow
 
-**Not yet configured for this project.** Once a target application and its login
-requirements are known, record the exact steps here as a fill/click sequence so
-`explore-page` can replay it automatically instead of asking each time, e.g.:
+A login flow is specific to one application under test, so it is recorded in the
+**testproject's `LEARNINGS.md`, under its `## Login flow` heading** — never in this
+file. This `AGENTS.md` is shared by every testautomation project (see "Shared
+knowledge" above); writing one project's login steps here would replay them against
+every other project's app. Record the flow as a numbered fill/click sequence so
+`explore` can replay it automatically instead of asking each time, e.g.:
 
 ```
 1. goto <login URL>
@@ -84,6 +131,7 @@ requirements are known, record the exact steps here as a fill/click sequence so
 4. click <submit selector>
 ```
 
+Always the `$SECRET:NAME` placeholder, never a real password (see "Secrets" above).
 No dedicated login skill or OIDC logic is needed — see `docs/PLAN.md` section 4.3.
 
 ## Component/typography references

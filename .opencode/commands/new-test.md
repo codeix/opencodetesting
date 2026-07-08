@@ -5,7 +5,7 @@ agent: build
 
 Run the full "new test" skill chain autonomously for the request below, without asking
 for confirmation between steps (only stop early if genuinely blocked, e.g. login
-required but no flow is recorded in AGENTS.md):
+required but no flow is recorded in LEARNINGS.md):
 
 1. **explore-page** — navigate to the target URL and capture its ARIA snapshot. Only
    take a cropped screenshot if a specific element is genuinely ambiguous from the

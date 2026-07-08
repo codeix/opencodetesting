@@ -9,5 +9,9 @@ bootstrap.config
 # Per-project test workspaces (generated test output, not part of this repo)
 workspace/
 
+# Safety net: LEARNINGS.md is testproject-specific data, never part of this
+# shared framework repo (see AGENTS.md "Shared knowledge" section)
+/LEARNINGS.md
+
 # Editor swap files
 *.swp
