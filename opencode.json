@@ -19,5 +19,8 @@
       }
     }
   },
-  "model": "local/devstral-small-2"
+  "model": "local/devstral-small-2",
+  "agent": {
+    "plan": { "disable": true }
+  }
 }

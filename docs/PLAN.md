@@ -61,7 +61,11 @@ project/
 │   ├── tools/
 │   │   └── playwright-explore.ts     # custom tool: drives the browser, returns ARIA snapshot + screenshot path
 │   ├── agents/
-│   │   └── vision.md                 # sub-agent that uses Ministral-3:3b (only for screenshots)
+│   │   ├── vision.md                 # sub-agent that uses Ministral-3:3b (only for screenshots)
+│   │   ├── explore.md                # primary agent, phase 1: browser exploration (read-only)
+│   │   ├── selenium.md               # primary agent, phase 2: write page objects + tests (no browser/shell)
+│   │   ├── test.md                   # primary agent, phase 3: mvn run + auto-fix (max 3 attempts)
+│   │   └── inspector.md              # primary agent: Playwright codegen recording + translation
 │   └── commands/
 │       ├── new-test.md               # /new-test <url> <scenario>
 │       └── edit-test.md              # /edit-test <test-file> <change>
@@ -572,6 +576,13 @@ values (e.g. as constants or in `config/test.properties`), no call to an AI.
       before the first generation, or when `validate-test` finds them missing.
 - [x] Wrote all skill files, including `explore-page` and `check-typography` (see
       section 10) — see `.opencode/skills/`.
+- [x] Phase-specific primary agents added (2026-07-08, decision by the developer):
+      `explore` (browser only, read-only), `selenium` (code writing, no browser/shell),
+      `test` (mvn + auto-fix, hard 3-attempt limit), `inspector` (Playwright codegen
+      recording, translated to AGENTS.md login flow / selenium steps). Built-in `plan`
+      agent disabled in `opencode.json`; `build` kept unrestricted for setup/git. All
+      agents share one session (Tab-switch), so phase results hand over automatically;
+      per-phase tool restriction keeps Devstral's context and choices small.
 - [x] Researched `references/oblique-components.md` and `references/design-tokens.md`
       (see section 10.3) — still marked unverified/needs-review in-file since it's
       compiled from public docs, not hand-tested against a real Oblique app.

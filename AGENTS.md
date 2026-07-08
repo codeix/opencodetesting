@@ -11,6 +11,21 @@ visual follow-ups) via the skill chain in `.opencode/skills/`. Playwright is use
 internally, during generation, to "see" the page — it is never part of the delivered
 test and never runs at test time.
 
+## Console agents (Tab to switch)
+
+Phase-specific primary agents keep the small model's context and tool set narrow.
+They share one session, so each phase sees the previous phase's results:
+
+- `explore` — drive the visible browser, understand the scenario (read-only, no code).
+- `selenium` — write page objects + tests from the exploration (no browser, no shell).
+- `test` — `mvn` compile/run, analyze failures, auto-fix (max 3 attempts, then report).
+- `inspector` — launch Playwright codegen so the developer records a flow themselves,
+  then translate the recording (login flow → AGENTS.md, scenario → selenium steps).
+- `build` — unrestricted; setup (`setup-java-skeleton`), git, housekeeping.
+
+The built-in `plan` agent is disabled in `opencode.json`. The `vision` sub-agent is
+unchanged (rare visual follow-ups only).
+
 ## Skill chain rules
 
 - One skill = one task. Never combine "analyze AND generate AND validate" into a

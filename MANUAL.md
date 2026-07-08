@@ -34,6 +34,17 @@ Start the console in the project root:
 opencode
 ```
 
+Press **Tab** to switch between the phase agents — the session (and everything
+already discussed) carries over:
+
+| Agent | Phase |
+|---|---|
+| `explore` | Open the browser, click through the app, understand the scenario |
+| `selenium` | Write the page objects and JUnit test from the exploration |
+| `test` | Compile/run with Maven, auto-fix failures (stops after 3 attempts) |
+| `inspector` | You record a flow in Playwright codegen; the AI translates it |
+| `build` | Everything else: skeleton setup, git, housekeeping |
+
 Then just talk to it. Typical requests:
 
 | You want | Say / type |
