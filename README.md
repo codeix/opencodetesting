@@ -112,14 +112,15 @@ reference it:
 One `git pull` in the shared clone then updates every project that references
 it — no vendoring, no manual re-copying.
 
-**Fastest way to set this up:** clone `opencodetesting` as a sibling of the
-other project, then open `opencode` there and paste in the raw link to
-[`INSTALL.md`](INSTALL.md)
+**Fastest way to set this up:** in the other project, open `opencode` and
+paste in the raw link to [`INSTALL.md`](INSTALL.md)
 (`https://raw.githubusercontent.com/codeix/opencodetesting/master/INSTALL.md`).
-opencode fetches it and creates two relative symlinks (`.opencode` and
-`.opencodetesting`) plus an `opencode.json` update — no environment
-variables, no shell profile edits. `OPENCODE_CONFIG_DIR` is still there as a
-fallback for setups where sibling cloning isn't possible (e.g. CI).
+opencode fetches it, asks how you want it wired up (default: personal,
+gitignored symlinks — nothing machine-specific gets committed, so it works
+regardless of where each teammate has `opencodetesting` cloned), then
+creates the `.opencode`/`.opencodetesting` symlinks and points opencode at
+the shared `AGENTS.md`/docs/references. `OPENCODE_CONFIG_DIR` remains as a
+fallback for setups that can't use symlinks at all (e.g. CI).
 
 ## Rules of thumb
 

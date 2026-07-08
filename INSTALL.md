@@ -8,113 +8,136 @@ link into the chat:
 https://raw.githubusercontent.com/codeix/opencodetesting/master/INSTALL.md
 ```
 
-opencode will fetch it, ask you one question, and wire the project up with
-two committed symlinks — no environment variables, no shell profile edits.
-If you prefer to do it by hand, skip to "Manual steps" below.
-
-## Convention: clone as siblings
-
-This setup assumes `opencodetesting` is cloned **next to** the project that
-uses it, not nested inside it:
-
-```
-development/
-├── opencodetesting/       <- this repo
-└── test-automation/       <- the project that references it
-```
-
-That way every symlink can be a **relative** path (`../opencodetesting/...`),
-which resolves the same way for every teammate and every machine, as long as
-they follow the same sibling layout. No machine-specific absolute paths get
-committed to the repo.
+opencode will fetch it, ask you a couple of questions, and wire the project
+up. If you prefer to do it by hand, skip to "Manual steps" below.
 
 ## Instructions for the agent
 
 If you are an opencode agent reading this because a user gave you this link,
-do the following in the current project:
+do the following in the current project.
 
-1. Ask the user: **"Is `opencodetesting` cloned as a sibling directory next
-   to this project (e.g. `../opencodetesting`)? If not, where would you like
-   it, or should I clone it there for you?"** Get it into a sibling position
-   before continuing — that's what makes the rest of this portable.
+### 1. Ask how they want it wired up
 
-2. Verify `../opencodetesting` actually looks like this repo — it should
-   contain `.opencode/`, `AGENTS.md`, `docs/`, and `references/`. If it
-   doesn't, say so and ask again rather than guessing.
+Ask the user to choose, and default to the first option if they have no
+preference:
 
-3. Create two **relative** symlinks at the project root:
+- **Personal / gitignored (recommended)** — the symlinks and the
+  machine-specific config live only on this developer's machine. Nothing
+  path-specific is ever committed, so it works no matter where or how each
+  teammate has `opencodetesting` cloned — no shared layout convention
+  required. Every teammate runs this same flow once, pointing at wherever
+  their own clone happens to be.
+- **Committed / shared** — the symlinks are committed to the repo as
+  relative paths, on the assumption that *everyone* clones
+  `opencodetesting` as a sibling of this project in the same layout. Less
+  setup per teammate, but breaks for anyone whose layout differs.
 
-   ```bash
-   ln -s ../opencodetesting/.opencode .opencode
-   ln -s ../opencodetesting .opencodetesting
-   ```
+The rest of this section covers both; skip to whichever the user picked.
 
-   `.opencode` gives opencode's normal project-local discovery (agents,
-   commands, skills) the shared ones for free — no config needed for that
-   part. `.opencodetesting` is a second pointer to the whole shared repo,
-   used for the docs/AGENTS.md reference in the next step.
+### 2. Find (or clone) opencodetesting
 
-4. Update (or create) `opencode.json` in the current project:
+Ask: **"Where is `opencodetesting` cloned on this machine?"** (absolute
+path). Offer to `git clone` it to a path of their choice if they don't have
+it yet — a sibling directory next to this project is a reasonable default
+suggestion, but not required for the personal/gitignored option.
 
-   ```json
-   {
-     "$schema": "https://opencode.ai/config.json",
-     "instructions": [".opencodetesting/AGENTS.md"],
-     "permission": {
-       "external_directory": {
-         "<absolute-resolved-path>/AGENTS.md": "allow",
-         "<absolute-resolved-path>/docs/**": "allow",
-         "<absolute-resolved-path>/references/**": "allow"
-       }
-     }
-   }
-   ```
+Verify the path actually looks like this repo — it should contain
+`.opencode/`, `AGENTS.md`, `docs/`, and `references/`. If it doesn't, say so
+and ask again rather than guessing.
 
-   Resolve `<absolute-resolved-path>` yourself (e.g. `realpath
-   ../opencodetesting`) and substitute it — the `permission.external_directory`
-   check is a safety net in case opencode resolves symlinks before applying
-   permissions; harmless if it turns out not to be strictly required.
+### 3. Create the symlinks
 
-5. Commit the two symlinks and the `opencode.json` change to the project's
-   repo — ask the user before committing/pushing, per normal git etiquette.
-   Note for Windows users: this needs `git config core.symlinks true` and
-   either Developer Mode or an elevated `git clone`, otherwise symlinks
-   check out as plain text files.
+```bash
+ln -s <path>/.opencode .opencode
+ln -s <path> .opencodetesting
+```
 
-6. Ask the user to restart opencode in this project, then confirm the setup
-   worked — check that the shared agents (`explore`, `selenium`, `test`,
-   `inspector`) and commands (`/new-test`, `/edit-test`) are now available.
+Use a relative `<path>` (e.g. `../opencodetesting`) if it's a sibling
+directory, or the absolute path otherwise — either works, since these
+symlinks are read from disk, not compared against anything else.
 
-7. Report back what you changed: the resolved path, the two symlinks
-   created, and the `opencode.json` diff.
+### 4. Wire up `AGENTS.md` / docs / references
 
-Nothing from `opencodetesting` is copied — the symlinks and the one
-resolved path in `opencode.json` are the only things committed. A `git pull`
-in the `opencodetesting` clone updates every project that points at it.
+This step depends on what the user picked in step 1:
 
-### If sibling cloning isn't possible
+- **Personal / gitignored:** add the `instructions` entry and
+  `permission.external_directory` allow-rules to the user's own **global**
+  config at `~/.config/opencode/opencode.json` (create it if it doesn't
+  exist) — not the project's `opencode.json`. opencode merges global and
+  project config automatically, so this never touches a file the repo
+  tracks:
 
-If the project can't sit next to `opencodetesting` on disk (e.g. it's
-cloned by CI into an unpredictable path), fall back to the environment
-variable instead of symlinks: set `OPENCODE_CONFIG_DIR=<path>/.opencode`
+  ```json
+  {
+    "$schema": "https://opencode.ai/config.json",
+    "instructions": ["<absolute-path>/AGENTS.md"],
+    "permission": {
+      "external_directory": {
+        "<absolute-path>/AGENTS.md": "allow",
+        "<absolute-path>/docs/**": "allow",
+        "<absolute-path>/references/**": "allow"
+      }
+    }
+  }
+  ```
+
+  Then add `.opencode` and `.opencodetesting` to the project's
+  `.gitignore` (create it if missing) so the symlinks never get committed
+  by accident. This is the one change that touches the shared repo in this
+  mode — confirm with the user before committing it.
+
+- **Committed / shared:** add the same `instructions` /
+  `permission.external_directory` block to the **project's own**
+  `opencode.json` instead, with the resolved absolute path substituted in,
+  and commit it along with the two symlinks. Confirm with the user before
+  committing/pushing.
+
+### 5. Verify
+
+Ask the user to restart opencode in this project, then confirm the shared
+agents (`explore`, `selenium`, `test`, `inspector`) and commands
+(`/new-test`, `/edit-test`) are now available.
+
+### 6. Report back
+
+Summarize what changed: the path used, the two symlinks, which config file
+got the `instructions`/`permission` block (global vs. project), and whether
+anything was committed.
+
+Nothing from `opencodetesting` is copied — only symlinks and (in the
+committed mode) one resolved path in `opencode.json`. A `git pull` in the
+`opencodetesting` clone updates every project that points at it.
+
+### Windows note
+
+Symlinks need `git config core.symlinks true` and either Developer Mode or
+an elevated `git clone` — otherwise they check out as plain text files. This
+only matters for the committed mode; personal/gitignored symlinks are never
+checked out by git in the first place, so this doesn't apply to them.
+
+### If OPENCODE_CONFIG_DIR is preferred instead
+
+Some setups (e.g. CI, or developers who'd rather not use symlinks at all)
+can skip symlinks entirely: set `OPENCODE_CONFIG_DIR=<path>/.opencode`
 before starting opencode, and still add the `instructions` /
-`permission.external_directory` block from step 4 above with an absolute
-path. This isn't committed to the repo, so it needs to be set per machine
-(shell profile, CI env config, or a project-local `.envrc` if the team uses
-direnv).
+`permission.external_directory` block from step 4 (global config if it
+shouldn't be shared, project config if it should). This isn't committed
+either way, so it needs to be set per machine (shell profile, CI env
+config, or a project-local `.envrc` if the team uses direnv).
 
 ## Manual steps
 
-If you'd rather do this yourself without going through the agent:
+If you'd rather do this yourself without going through the agent, personal/
+gitignored version:
 
-1. Clone `opencodetesting` as a sibling of your project (see layout above).
+1. Clone `opencodetesting` wherever you like.
 2. From your project root:
    ```bash
-   ln -s ../opencodetesting/.opencode .opencode
-   ln -s ../opencodetesting .opencodetesting
+   ln -s <path>/.opencode .opencode
+   ln -s <path> .opencodetesting
    ```
-3. Add the `instructions` and `permission.external_directory` block from
-   step 4 above to your project's `opencode.json`, with the real resolved
-   path substituted in.
-4. Commit `.opencode`, `.opencodetesting`, and `opencode.json`.
+3. Add `.opencode` and `.opencodetesting` to the project's `.gitignore`.
+4. Add the `instructions` / `permission.external_directory` block from
+   step 4 above to `~/.config/opencode/opencode.json`, with the real
+   absolute path substituted in.
 5. Restart opencode in your project.
