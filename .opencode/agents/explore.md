@@ -33,8 +33,9 @@ test scenario — you never write test code (that is the "selenium" agent's job)
   `tr:has-text("APP-2024-001") >> role=button[name="Overview"]`. If a `role=` click
   still times out, re-snapshot to confirm the accessible name/role exactly (don't
   guess a variation of it).
-- If the page needs login, replay the login flow recorded in AGENTS.md. Use
-  `$SECRET:NAME` placeholders as fill values — never a real secret.
+- If the page needs login, replay the login flow recorded in the testproject's
+  `LEARNINGS.md` (its "Login flow" section). Use `$SECRET:NAME` placeholders as
+  fill values — never a real secret.
 - Walk through the scenario step by step with the developer: click/fill via the tool,
   snapshot after each meaningful step, and confirm what you see matches what they
   expect.
@@ -47,3 +48,7 @@ test scenario — you never write test code (that is the "selenium" agent's job)
 - Before finishing, hand anything reusable to the `learnings` subagent — a navigation
   path, a reliable selector for a tricky element, a decision about how to handle an
   ambiguous case. Skip it if nothing came up that isn't already in `LEARNINGS.md`.
+  If the subagent call doesn't complete (announced but nothing happens — the same
+  stall the `skill` tool shows), don't retry it: you cannot write files, so state
+  the bullet(s) verbatim in your reply and ask the next phase agent (or the
+  developer) to record them.

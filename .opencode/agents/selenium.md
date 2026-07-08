@@ -36,4 +36,9 @@ scenario summary from the "explore" agent, earlier in this session) into Java co
   with the "test" agent.
 - Before finishing, hand anything reusable to the `learnings` subagent — a Selenium
   coding convention adopted for this testproject, or a selector/component pattern
-  worth keeping. Skip it if nothing came up that isn't already in `LEARNINGS.md`.
+  worth keeping. Include any bullets the "explore" agent asked to have recorded
+  earlier in this session (it cannot write files itself). Skip it if nothing came
+  up that isn't already in `LEARNINGS.md`. If the subagent call doesn't complete
+  (announced but nothing happens — the same stall the `skill` tool shows), don't
+  retry it: append the bullet(s) to `LEARNINGS.md` yourself, under the matching
+  heading, in the same one-line format.

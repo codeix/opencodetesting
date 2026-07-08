@@ -62,8 +62,8 @@ reports the error to you.
 ## Shared knowledge across sessions
 
 The agents keep a `LEARNINGS.md` file at your project root — decisions, navigation
-notes, tricky selectors, and Selenium conventions specific to your app, so the same
-thing doesn't get re-discovered every session. It's created automatically the first
+notes, the login flow, tricky selectors, and Selenium conventions specific to your
+app, so the same thing doesn't get re-discovered every session. It's created automatically the first
 time an agent has something to record; commit it like any other project file and
 read it yourself any time you want to see what the agents have learned so far.
 
@@ -74,9 +74,11 @@ Tell the agent your login flow **once**, interactively:
 > "To log in: go to /login, fill #username with the test user, fill #password with
 > $SECRET:TEST_PASSWORD, click the submit button."
 
-Then have it record those steps in the "Login flow" section of `AGENTS.md`, so every
-future run replays them automatically. Always write `$SECRET:TEST_PASSWORD` — never
-the real password. The tool resolves it from `.tools/secrets.env` on its own.
+Then have it record those steps in the "Login flow" section of your project's
+`LEARNINGS.md` (see "Shared knowledge across sessions" above), so every future run
+replays them automatically. They stay in *your* project — never in the shared
+`AGENTS.md`, which other testprojects reuse. Always write `$SECRET:TEST_PASSWORD` —
+never the real password. The tool resolves it from `.tools/secrets.env` on its own.
 
 ## Running the generated tests
 

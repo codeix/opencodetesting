@@ -20,7 +20,7 @@ They share one session, so each phase sees the previous phase's results:
 - `selenium` — write page objects + tests from the exploration (no browser, no shell).
 - `test` — `mvn` compile/run, analyze failures, auto-fix (max 3 attempts, then report).
 - `inspector` — launch Playwright codegen so the developer records a flow themselves,
-  then translate the recording (login flow → AGENTS.md, scenario → selenium steps).
+  then translate the recording (login flow → LEARNINGS.md, scenario → selenium steps).
 - `build` — unrestricted; setup (`setup-java-skeleton`), git, housekeeping.
 
 The built-in `plan` agent is disabled in `opencode.json`. The `vision` sub-agent is
@@ -49,20 +49,26 @@ project that reuses this install.
 
 - Every phase agent (`explore`, `selenium`, `test`, `inspector`) reads it before
   acting and, at the end of its turn, hands anything reusable to the `learnings`
-  sub-agent (`.opencode/agents/learnings.md`), which is the only agent that writes
-  to the file — it keeps entries organized under four fixed headings (`Decisions`,
-  `Navigation`, `Elements & selectors`, `Selenium conventions`) and avoids
-  duplicates.
+  sub-agent (`.opencode/agents/learnings.md`), which is normally the only agent
+  that writes to the file — it keeps entries organized under five fixed headings
+  (`Decisions`, `Navigation`, `Login flow`, `Elements & selectors`,
+  `Selenium conventions`) and avoids duplicates. If a sub-agent call doesn't
+  complete (the known stall pattern — see "Skill chain rules" below), an agent
+  with write access appends the entry itself in the same format; `explore` (which
+  cannot write) states it in its reply so the developer or the next phase agent
+  records it.
 - This is a reference doc, not a changelog: terse bullets, no dates, no session
-  narration.
+  narration. Keep the whole file under ~80 lines — every phase agent loads it each
+  turn, and the local model's context is small: merge overlapping bullets and drop
+  superseded ones instead of growing past that.
 - Doesn't exist yet for a fresh testproject — the `learnings` sub-agent creates it
   there on first use. Commit it like any other project file, in the testproject's
   own repo; it's meant to be shared with the whole team, not just the AI.
 - This is distinct from `references/oblique-components.md` /
   `references/design-tokens.md` (general Oblique/Angular Material knowledge, part of
-  this shared framework repo, the same for every testproject) and from the "Login
-  flow" section below (one specific, security-sensitive flow). `LEARNINGS.md` is
-  everything else that's specific to one testproject.
+  this shared framework repo, the same for every testproject). `LEARNINGS.md` is
+  everything that's specific to one testproject — including its login flow (see
+  "Login flow" below).
 
 ## Skill chain rules
 
@@ -111,9 +117,12 @@ project that reuses this install.
 
 ## Login flow
 
-**Not yet configured for this project.** Once a target application and its login
-requirements are known, record the exact steps here as a fill/click sequence so
-`explore-page` can replay it automatically instead of asking each time, e.g.:
+A login flow is specific to one application under test, so it is recorded in the
+**testproject's `LEARNINGS.md`, under its `## Login flow` heading** — never in this
+file. This `AGENTS.md` is shared by every testautomation project (see "Shared
+knowledge" above); writing one project's login steps here would replay them against
+every other project's app. Record the flow as a numbered fill/click sequence so
+`explore` can replay it automatically instead of asking each time, e.g.:
 
 ```
 1. goto <login URL>
@@ -122,6 +131,7 @@ requirements are known, record the exact steps here as a fill/click sequence so
 4. click <submit selector>
 ```
 
+Always the `$SECRET:NAME` placeholder, never a real password (see "Secrets" above).
 No dedicated login skill or OIDC logic is needed — see `docs/PLAN.md` section 4.3.
 
 ## Component/typography references

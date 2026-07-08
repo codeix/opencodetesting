@@ -36,4 +36,7 @@ a past fix for the same flaky selector or environment quirk may already be recor
   or the "build" agent handles git).
 - Before finishing, hand anything reusable to the `learnings` subagent — a fix for a
   recurring failure, an environment quirk, a decision about how to handle a flaky
-  selector. Skip it if nothing came up that isn't already in `LEARNINGS.md`.
+  selector. Skip it if nothing came up that isn't already in `LEARNINGS.md`. If the
+  subagent call doesn't complete (announced but nothing happens — the same stall
+  the `skill` tool shows), don't retry it: append the bullet(s) to `LEARNINGS.md`
+  yourself, under the matching heading, in the same one-line format.
