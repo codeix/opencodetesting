@@ -112,6 +112,12 @@ reference it:
 One `git pull` in the shared clone then updates every project that references
 it — no vendoring, no manual re-copying.
 
+**Fastest way to set this up:** in the other project, open `opencode` and
+paste in the raw link to [`INSTALL.md`](INSTALL.md)
+(`https://raw.githubusercontent.com/codeix/opencodetesting/master/INSTALL.md`).
+opencode fetches it, asks where `opencodetesting` is cloned on your machine,
+and wires the project's `opencode.json` up to it automatically.
+
 ## Rules of thumb
 
 - One request = one test scenario. Small asks give better results — the local models
