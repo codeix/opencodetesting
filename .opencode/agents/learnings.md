@@ -11,6 +11,7 @@ tools:
   bash: false
   webfetch: false
   playwright-explore: false
+  record-learning: false
 ---
 
 You maintain `LEARNINGS.md` at the testproject's own root — the one file every phase
