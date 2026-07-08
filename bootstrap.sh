@@ -2,13 +2,13 @@
 #
 # bootstrap.sh — Sets up ONLY the local project.
 #
-# Ollama + Devstral/Ministral-3:3b run on their own, separate server and are NOT installed,
-# started, or managed by this script — that is intentionally out of scope for this
-# project. This script only takes care of:
+# The local model provider (mistral-small-4-119b) is configured in opencode's
+# system/global settings and is NOT installed, started, or managed by this script —
+# that is intentionally out of scope for this project. This script only takes care
+# of:
 #   - npm dependencies for the Playwright custom tool (project-local)
 #   - Playwright browsers (project-local, not in ~/.cache)
-#   - Project configuration (base URL, login, model server address, secrets)
-#   - Health check: is the external model server reachable?
+#   - Project configuration (base URL, login, secrets)
 #
 # Status: PLANNING DRAFT. Verify before real use (see TODO markers).
  
@@ -22,8 +22,8 @@ SECRETS_FILE="$TOOLS_DIR/secrets.env"
  
 echo "== AI Test Generator — Bootstrap (local project) =="
 echo "Project folder: $PROJECT_ROOT"
-echo "Note: The model server (Ollama, Devstral/Ministral-3:3b) runs separately and is NOT"
-echo "set up here — see PLAN.md section 7."
+echo "Note: The local model provider (mistral-small-4-119b) is configured in opencode's"
+echo "system settings and is NOT set up here — see PLAN.md section 7."
 echo
  
 mkdir -p "$TOOLS_DIR" "$PROJECT_ROOT/config"
@@ -31,7 +31,7 @@ mkdir -p "$TOOLS_DIR" "$PROJECT_ROOT/config"
 # ---------------------------------------------------------------------------
 # 1. Project configuration: prefer a file, otherwise ask interactively
 # ---------------------------------------------------------------------------
-echo "[1/4] Project configuration ..."
+echo "[1/3] Project configuration ..."
  
 if [ -f "$CONFIG_FILE" ]; then
   echo "    Using existing bootstrap.config as defaults."
@@ -54,10 +54,6 @@ if [ -z "${LOGIN_REQUIRED:-}" ]; then
 fi
 if [ "${LOGIN_REQUIRED:-n}" = "y" ] && [ -z "${TEST_USER:-}" ]; then
   read -rp "    Test username: " TEST_USER
-fi
-if [ -z "${MODEL_SERVER_URL:-}" ]; then
-  read -rp "    Address of the external model server [http://sriolo-desktop.local:11434]: " MODEL_SERVER_URL
-  MODEL_SERVER_URL="${MODEL_SERVER_URL:-http://sriolo-desktop.local:11434}"
 fi
  
 # Password NEVER goes into test.properties or bootstrap.config — only into the
@@ -84,37 +80,24 @@ fi
   echo "base.url=${BASE_URL}"
   echo "login.required=${LOGIN_REQUIRED}"
   echo "test.user=${TEST_USER:-}"
-  echo "model.server.url=${MODEL_SERVER_URL}"
   echo "# No password here! See .tools/secrets.env (PLAN.md section 6)."
 } > "$TEST_PROPERTIES"
- 
+
 # ---------------------------------------------------------------------------
-# 2. Health check: is the external model server reachable?
+# 2. npm dependencies for the custom tool (project-local)
 # ---------------------------------------------------------------------------
-echo "[2/4] Checking reachability of the model server ($MODEL_SERVER_URL) ..."
-if curl -s --max-time 5 "$MODEL_SERVER_URL" > /dev/null 2>&1; then
-  echo "    ✓ Model server reachable."
-else
-  echo "    !! Model server at $MODEL_SERVER_URL is not reachable."
-  echo "       This is not a reason to abort here (the server runs separately) —"
-  echo "       but the AI skills won't work later without it."
-fi
- 
-# ---------------------------------------------------------------------------
-# 3. npm dependencies for the custom tool (project-local)
-# ---------------------------------------------------------------------------
-echo "[3/4] Installing npm dependencies (.opencode/) ..."
+echo "[2/3] Installing npm dependencies (.opencode/) ..."
 if [ -f "$PROJECT_ROOT/.opencode/package.json" ]; then
   (cd "$PROJECT_ROOT/.opencode" && npm install --no-audit --no-fund)
 else
   echo "    !! .opencode/package.json doesn't exist yet — skipping this step."
   echo "       (see PLAN.md section 4.2 — custom tool not yet created)"
 fi
- 
+
 # ---------------------------------------------------------------------------
-# 4. Install Playwright browsers PROJECT-LOCAL (not in ~/.cache)
+# 3. Install Playwright browsers PROJECT-LOCAL (not in ~/.cache)
 # ---------------------------------------------------------------------------
-echo "[4/4] Installing Playwright browsers (project-local, not global) ..."
+echo "[3/3] Installing Playwright browsers (project-local, not global) ..."
 if [ -d "$PROJECT_ROOT/.opencode/node_modules/playwright" ] \
    || [ -d "$PROJECT_ROOT/.opencode/node_modules/playwright-core" ]; then
   (cd "$PROJECT_ROOT/.opencode" && PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install chromium)
@@ -129,6 +112,6 @@ echo "  $PROJECT_ROOT/.opencode/node_modules"
 echo "No system changes made, no sudo used."
 echo
 echo "Configuration written to: $TEST_PROPERTIES"
-echo "Model server address: $MODEL_SERVER_URL (runs separately, not part of this script)."
+echo "Local model provider: configured in opencode's system settings, not part of this script."
 echo "Secrets (if login is required): $SECRETS_FILE"
 

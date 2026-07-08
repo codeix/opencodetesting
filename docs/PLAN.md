@@ -1,9 +1,9 @@
-# PLAN.md — AI-Powered Test Generator (OpenCode + Devstral/Ministral + Java/Selenium)
+# PLAN.md — AI-Powered Test Generator (OpenCode + Mistral Small 4 119B + Java/Selenium)
 
 This document is the **build plan** for the project. It describes the architecture and
-defines how every single `SKILL.md` must look, so the agent (Devstral as the text/code
-model, Ministral-3:3b only for visual follow-up questions) can work independently
-without blowing the small AI's context window.
+defines how every single `SKILL.md` must look, so the agent (`mistral-small-4-119b`,
+used both as the text/code model and for rare visual follow-up questions) can work
+independently without blowing the small AI's context window.
 
 This file is **not** loaded automatically by the agent. It is documentation for humans.
 It is optionally linked from `AGENTS.md` so the agent can look it up when needed
@@ -26,8 +26,9 @@ the later implementation phase — not now.
   running web application (Angular or similar).
 - Playwright is used **only internally** by the AI to "see" the page (DOM/accessibility
   tree, screenshots) — it is **not** part of the delivered tests.
-- Small, local models (Devstral for code, Ministral-3:3b for images) have a limited context
-  window → every skill must be scoped so a single call stays small and focused.
+- A small, local model (`mistral-small-4-119b`, used for code and images alike) has a
+  limited context window → every skill must be scoped so a single call stays small and
+  focused.
 - Multi-step tasks (analysis → page object → test → validation) are planned
   **autonomously** by the agent as a chain of skill calls.
 - Developers can later have existing tests edited in a targeted way, without
@@ -41,9 +42,9 @@ the later implementation phase — not now.
 project/
 ├── bootstrap.sh                       # sets up ONLY the local project (npm, Playwright, config) — no sudo
 ├── bootstrap.config.example           # template to pre-fill (optional, instead of interactive prompts)
-├── .tools/                            # LOCAL ONLY, gitignored: secrets.env (no Ollama — runs separately!)
+├── .tools/                            # LOCAL ONLY, gitignored: secrets.env (model provider runs separately!)
 ├── .gitignore                        # must include .tools/ and *.env
-├── opencode.json                     # connection to the external model server via a "local" provider block, permissions, MCP servers (if used)
+├── opencode.json                     # opencode defaults (disabled agents, permissions, MCP servers if used) — no provider block; the local provider is configured in opencode's system settings
 ├── AGENTS.md                         # project rules, conventions, reference to PLAN.md
 ├── docs/
 │   └── PLAN.md                       # this document
@@ -61,7 +62,7 @@ project/
 │   ├── tools/
 │   │   └── playwright-explore.ts     # custom tool: drives the browser, returns ARIA snapshot + screenshot path
 │   ├── agents/
-│   │   ├── vision.md                 # sub-agent that uses Ministral-3:3b (only for screenshots)
+│   │   ├── vision.md                 # sub-agent that uses the configured local model (only for screenshots)
 │   │   ├── explore.md                # primary agent, phase 1: browser exploration (read-only)
 │   │   ├── selenium.md               # primary agent, phase 2: write page objects + tests (no browser/shell)
 │   │   ├── test.md                   # primary agent, phase 3: mvn run + auto-fix (max 3 attempts)
@@ -115,9 +116,9 @@ Every SKILL.md must contain these four sections, in this order:
 - **One skill = one task.** Never combine "analyze AND generate AND validate" into one
   skill.
 - **No full screenshot when text is enough.** Always try working with the
-  DOM/accessibility snapshot (text) first. Only use Ministral-3:3b/images when the skill
-  explicitly needs a "visual follow-up question" (e.g. ambiguous layout). Crop the
-  screenshot to the relevant area then, not the full page.
+  DOM/accessibility snapshot (text) first. Only use images (via the `vision`
+  sub-agent) when the skill explicitly needs a "visual follow-up question" (e.g.
+  ambiguous layout). Crop the screenshot to the relevant area then, not the full page.
 - **Never hand over large files whole.** Give the skill only excerpts (the affected
   method/class) of existing tests/page objects, not the whole file, unless it is
   genuinely short (<80 lines).
@@ -132,10 +133,10 @@ Every SKILL.md must contain these four sections, in this order:
 |---|---|---|---|---|
 | 0 | `component-knowledge` | (no live input — static reference) | selector/structure knowledge about Angular Material & Oblique, as text | none (reference only) |
 | 1 | `explore-page` | URL / running session | DOM snapshot (text) + optional cropped screenshot | Playwright tool (no LLM) |
-| 2 | `generate-pageobject` | DOM snapshot + lookup in `component-knowledge` | Java page object class | Devstral |
-| 3 | `generate-test` | Page object class + test scenario | Java test class (JUnit) | Devstral |
-| 4 | `validate-test` | Test class + page object | `mvn test-compile`/run result, on error: error message | no LLM (only for a fix suggestion: Devstral) |
-| 5 | `edit-test` | existing file (excerpt) + change request | updated excerpt | Devstral |
+| 2 | `generate-pageobject` | DOM snapshot + lookup in `component-knowledge` | Java page object class | `mistral-small-4-119b` |
+| 3 | `generate-test` | Page object class + test scenario | Java test class (JUnit) | `mistral-small-4-119b` |
+| 4 | `validate-test` | Test class + page object | `mvn test-compile`/run result, on error: error message | no LLM (only for a fix suggestion: `mistral-small-4-119b`) |
+| 5 | `edit-test` | existing file (excerpt) + change request | updated excerpt | `mistral-small-4-119b` |
 
 **Autonomous iteration planning:** The agent chains 1→2→3→4 automatically for "new
 test" requests. On validation failures it jumps back to step 3 (max. 3 attempts), then
@@ -145,9 +146,9 @@ aborts with an error report to the developer instead of looping forever.
 
 The application uses Angular Material and, built on top of it, **Oblique**
 (https://oblique.bit.admin.ch, the Swiss federal library of Angular components with an
-`Ob*` prefix). The small, local model (Devstral) cannot research these libraries
-itself — it has no internet access and too small a context window to read the docs
-every time.
+`Ob*` prefix). The small, local model (`mistral-small-4-119b`) cannot research these
+libraries itself — it has no internet access and too small a context window to read
+the docs every time.
 
 That's why this knowledge is **prepared once by Claude** (with real web access) and
 stored as a static reference file in the project. The local agent only reads the lines
@@ -218,32 +219,31 @@ dedicated skill and no OIDC logic**.
 
 This removes what was previously assessed as a complex login/auth architecture — the
 only remaining question is **how the test password is securely passed into this flow**
-without ending up in the prompt to Devstral/Ministral-3:3b or in plaintext in the repo.
+without ending up in the prompt to `mistral-small-4-119b` or in plaintext in the repo.
 That is the subject of the next planning step: secrets handling.
 
 ---
 
-## 5. Bootstrap (local project only, model server runs separately)
+## 5. Bootstrap (local project only, model provider configured separately)
 
 **Problem:** So far there is no step that sets up a new project once. `pom.xml`,
 `config/test.properties`, `.opencode/package.json`, and Playwright browsers would
 otherwise have to be prepared by hand — that contradicts the "usable out of the box"
 goal.
 
-**Important boundary:** Ollama with Devstral/Ministral-3:3b runs on its **own, separate
-server** (see section 7) and is **not** installed, started, or managed by
-`bootstrap.sh`. `bootstrap.sh` concerns only the local project (this repo) and assumes
-the model server is already running and reachable.
+**Important boundary:** The local model provider (`mistral-small-4-119b`, see section 7)
+is configured in opencode's **system/global settings**, not per-project, and is **not**
+installed, started, or managed by `bootstrap.sh`. `bootstrap.sh` concerns only the
+local project (this repo) and assumes opencode's default providers are already usable.
 
 **Solution:** `bootstrap.sh` in the project root. Runs once (or again as needed) and
 installs **everything project-local, no sudo, no system changes**:
 
 | Step | Does what | Where? |
 |---|---|---|
-| 1 | Generate project configuration (base URL, login, model server address) | `config/test.properties` |
-| 2 | Health check: is the external model server reachable? (no abort, just a warning) | — |
-| 3 | Install npm dependencies | `.opencode/node_modules/` |
-| 4 | Install Playwright browsers (`PLAYWRIGHT_BROWSERS_PATH=0`) | `.opencode/node_modules/` instead of `~/.cache` |
+| 1 | Generate project configuration (base URL, login) | `config/test.properties` |
+| 2 | Install npm dependencies | `.opencode/node_modules/` |
+| 3 | Install Playwright browsers (`PLAYWRIGHT_BROWSERS_PATH=0`) | `.opencode/node_modules/` instead of `~/.cache` |
 
 No step needs root privileges or changes anything outside the project folder.
 
@@ -251,7 +251,7 @@ No step needs root privileges or changes anything outside the project folder.
 
 - If `bootstrap.config` exists in the project root → values are taken from it.
 - If the file or individual values are missing → asked interactively (base URL,
-  whether login is needed, test username, **external model server address**).
+  whether login is needed, test username).
 - `bootstrap.config.example` is included as a template in the repo, so it can be copied
   and pre-filled if desired, instead of answering interactively every time.
 - **No password** ends up in `bootstrap.config` or `test.properties` — see section 6
@@ -263,15 +263,12 @@ No step needs root privileges or changes anything outside the project folder.
       user shouldn't miss this (a clearer warning may be needed).
 - [ ] Should `bootstrap.sh` also check whether `java`/`mvn` (or the Maven wrapper) are
       present? Not included currently.
-- [ ] The health check against the model server only checks whether *anything*
-      responds (`curl`), not whether Ollama is running correctly or the right models
-      are loaded — may need refining later (e.g. querying `/api/tags`).
 
 ---
 
 ## 6. Secrets Handling
 
-**Goal:** The test password must never be sent in plaintext to Devstral/Ministral-3:3b, must
+**Goal:** The test password must never be sent in plaintext to `mistral-small-4-119b`, must
 never end up in the repo, but must still be automatically available — both during
 AI-assisted exploration (login via Playwright) and in the final, self-contained
 Selenium test.
@@ -321,158 +318,46 @@ value happens outside the prompt, in code that already has filesystem access any
       extra safety net)?
 - [ ] Clarify whether the ARIA snapshot after a successful login could accidentally
       contain sensitive data (e.g. a displayed real username), and whether that's
-      uncritical for the prompt to Devstral (test users are usually fake data, but this
-      isn't automatically checked)
+      uncritical for the prompt to `mistral-small-4-119b` (test users are usually fake
+      data, but this isn't automatically checked)
 
 ---
 
-## 7. Model Connection (Devstral Small 2 + Ministral-3:3b on 2× RTX 3060 12GB)
+## 7. Model Connection (Mistral Small 4 119B, default providers)
 
-**Scope note:** Everything in this section concerns the **separate model server**, not
-the project repo or `bootstrap.sh` (see section 5). This section merely documents which
-models/configuration make sense there, so the decision stays traceable — `bootstrap.sh`
-does not install or manage any of it; it only connects to it via the configured
-`MODEL_SERVER_URL`.
+**Correction from an earlier planning version:** This section previously assumed two
+separate small models — "Devstral Small 2" for code and "Ministral-3:3b" for vision —
+running on a self-managed Ollama server, wired up via a custom `provider` block in
+`opencode.json`. Neither model exists; those were invented placeholder names from an
+earlier draft. The project now uses a single real model, **`mistral-small-4-119b`**,
+for both code generation and the rare vision follow-ups.
 
-**Hardware:** 2× RTX 3060, 12 GB VRAM each → 24 GB combined.
+**Provider configuration lives outside this repo.** opencode's default providers
+(including the local provider that serves `mistral-small-4-119b`) are configured in
+opencode's **system/global settings**, not in this project's `opencode.json`. This
+repo's `opencode.json` therefore has no `provider` block and no `model` field — model
+selection happens from within opencode itself (the model picker / global default),
+not hardcoded per project. See `opencode.json` in the repo root.
 
-**Model server address:** `http://sriolo-desktop.local:11434` — this is the value that
-goes into `bootstrap.config` as `MODEL_SERVER_URL` (section 5.1) and into `opencode.json`
-(section 7.3).
+- The `vision` sub-agent (`.opencode/agents/vision.md`) likewise does not pin a
+  `model:` field — it uses whatever default model is configured, currently
+  `mistral-small-4-119b`.
+- `bootstrap.sh` does not install, manage, or health-check any model server — that is
+  entirely out of scope for a per-project script now that the provider is a system-level
+  concern (see section 5).
+- Context budget rules (section 3.3) still apply regardless of exactly how the provider
+  is wired up: `mistral-small-4-119b` is still a comparatively small/local model, so
+  skills must stay narrowly scoped.
 
-**Correction from an earlier planning version:** Initially calculated using numbers
-from the older Devstral generation (24B, ~20 GB at Q4). What's actually used is
-**Devstral Small 2** (official Ollama tag `devstral-small-2`, also 24B, but a newer
-generation) — already running on the separate server according to feedback. Needs only
-**~14–15 GB** at Q4_K_M, notably less than assumed. Requires Ollama **0.13.3 or
-newer**.
-
-**Second correction:** The vision role is filled by **Ministral-3:3b** (Ollama tag
-`ministral-3:3b`), not Pixtral — confirmed working for image description by direct
-local testing. At 3B parameters it needs only a few GB of VRAM, far less than the
-12B Pixtral figure this section originally assumed. This changes the VRAM math in
-7.1/7.2 below: the two models together no longer come close to the 24 GB combined
-limit.
-
-**Realistic VRAM requirement (Q4 quantization):**
-
-| Model | Ollama tag | Parameters | VRAM at Q4 (approx.) | Fits on 1× 12GB? |
-|---|---|---|---|---|
-| Devstral Small 2 | `devstral-small-2` (or `devstral-small-2:24b`) | 24B | ~14–15 GB | No, but notably closer to fitting than previously assumed |
-| Ministral-3:3b | `ministral-3:3b` | 3B | ~2–3 GB (literature estimate, not yet measured with `nvidia-smi`) | Yes, comfortably |
-
-### 7.1 Ministral-3:3b Tag
-
-**Tag:** `ollama pull ministral-3:3b`. Already pulled and tested locally per feedback —
-image description works. No fallback tag needed (unlike the old Pixtral plan, which had
-a documented `mmproj` risk on some Ollama builds); no such issue reported here.
-
-**VRAM headroom consequence:** Devstral (~14–15 GB) + Ministral-3:3b (~2–3 GB) ≈ 17–18 GB
-combined — comfortably under the 24 GB pool, with real headroom for KV cache/overhead.
-This is a materially different situation from the original Pixtral-based plan, where
-both models together sat right at the 24 GB ceiling.
-
-### 7.2 Chosen Approach: One Shared Ollama Server, Dynamic Loading
-
-Instead of fixed GPU allocation: **a single Ollama server** that sees both GPUs as one
-shared 24 GB pool.
-- Devstral is loaded on demand and automatically split across both cards
-  (Ollama/llama.cpp split large models across multiple GPUs on their own).
-- Ministral-3:3b is only loaded on demand (vision sub-agent, used per the plan only for
-  rare visual follow-up questions anyway — see section 4.1).
-- Since the skill flow is inherently **sequential** (one skill = one task, see section
-  3.3), both models almost never need to be loaded at the same time regardless.
-- **Revised from the original Pixtral-based plan:** because combined VRAM usage
-  (~17–18 GB) now sits well under the 24 GB pool with headroom to spare (see 7.1),
-  forcing `OLLAMA_MAX_LOADED_MODELS=1` to prevent overflow is **no longer strictly
-  required** the way it was with Pixtral. It's still a reasonable default for
-  simplicity/predictability (avoids surprising interactions between two models'
-  KV caches), but it's now a choice rather than a VRAM-safety necessity. Leave it
-  set unless the load/unload delay on vision calls becomes annoying in practice —
-  in that case both models can simply be left resident.
-- Context window can stay at a normal size (`OLLAMA_CONTEXT_LENGTH`, if supported by the
-  installed Ollama version — TODO check) rather than being aggressively capped purely
-  for VRAM safety; the context budget rules (section 3.3) still apply for other reasons
-  (skill design, latency), independent of this VRAM headroom. This is configuration on
-  the separate server, not in the project repo.
-
-**Trade-off of this approach:** If `OLLAMA_MAX_LOADED_MODELS=1` is kept, switching
-between Devstral and Ministral-3:3b usage causes a short load delay (model gets
-unloaded/reloaded). That's acceptable because vision calls are rare per the plan anyway.
-With the VRAM headroom now available, this trade-off is optional rather than forced.
-
-### 7.3 `opencode.json` — Connecting to the External Model Server
-
-**Verified against the current OpenCode docs** (this resolves the two TODOs that used
-to be here — the earlier `LOCAL_ENDPOINT`/`local.<model>` dot-notation draft was
-guessed from a doc fragment and was wrong; the real mechanism is a `provider` block
-using the `@ai-sdk/openai-compatible` adapter, with models referenced as
-`provider-id/model-id`, not `local.<model>`):
-
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "provider": {
-    "local": {
-      "npm": "@ai-sdk/openai-compatible",
-      "name": "Local Ollama (Devstral + Ministral)",
-      "options": {
-        "baseURL": "http://sriolo-desktop.local:11434/v1"
-      },
-      "models": {
-        "devstral-small-2": { "name": "Devstral Small 2" },
-        "ministral-3:3b": { "name": "Ministral-3:3b" }
-      }
-    }
-  },
-  "model": "local/devstral-small-2",
-  "agent": {
-    "vision": {
-      "mode": "subagent",
-      "model": "local/ministral-3:3b",
-      "description": "Image-analysis sub-agent — only for visual follow-up questions (see component-knowledge, section 4.1)"
-    }
-  }
-}
-```
-
-- The provider's `baseURL` is the single place the model server address lives inside
-  `opencode.json`. It's the same address stored in `bootstrap.config` as
-  `MODEL_SERVER_URL` (see section 5.1): `http://sriolo-desktop.local:11434`.
-- **Still open:** `MODEL_SERVER_URL` from `bootstrap.config`/`test.properties` is not
-  automatically wired into `opencode.json`'s `baseURL` — currently two separate storage
-  locations with no coupling. Either accept the duplication (both must be kept in sync
-  by hand when the server address changes), or have `bootstrap.sh` template/rewrite
-  `opencode.json`'s `baseURL` from `MODEL_SERVER_URL` as an extra step. Not yet decided.
-
-### 7.4 Open Items
-- [x] Devstral model name corrected: `devstral-small-2` (24B, newer generation),
-      already running locally per feedback — VRAM estimate corrected downward from
-      ~20 GB to ~14–15 GB (see the top of this section).
-- [x] Vision model corrected: Ministral-3:3b (`ministral-3:3b`) replaces Pixtral —
-      confirmed working for image description by direct local testing. VRAM estimate
-      (~2–3 GB) is much lower than Pixtral's (~9–10 GB), which relaxes the shared-pool
-      VRAM constraint in 7.1/7.2.
-- [ ] VRAM numbers (~14–15 GB / ~2–3 GB) are still literature/estimate values —
-      cross-check with `nvidia-smi` during a real run on the actual hardware, even
-      though both models are already demonstrably running.
-- [ ] Check Ollama version: `devstral-small-2` needs **Ollama 0.13.3+** — make sure
-      `bootstrap.sh` loads a sufficiently current version (currently no version check
-      in the script).
-- [x] Runtime context window verified on the live server (2026-07-08 via `/api/ps`):
-      both `devstral-small-2` and `ministral-3:3b` run with **65,536 tokens**. Declared
-      as `limit: { context: 65536 }` per model in `opencode.json` so opencode can track
-      usage and auto-compact — without this, Ollama silently truncates the oldest
-      tokens with no warning to the client. Re-check `/api/ps` if the server's
-      `OLLAMA_CONTEXT_LENGTH`/Modelfile `num_ctx` ever changes, and keep the two in sync.
-- [x] Verified the real `opencode.json` provider syntax against current OpenCode docs
-      (section 7.3) — it's a `provider` block using `@ai-sdk/openai-compatible` with
-      `provider-id/model-id` references, not the guessed `LOCAL_ENDPOINT`/`local.*`
-      dot-notation. `opencode.json` now written with this real syntax.
-- [ ] If Devstral at Q4 turns out too tight (e.g. for longer contexts/multi-file
-      edits): evaluate falling back to a more heavily compressed quantization
-      (Q3_K_M) — a quality trade-off, not yet tested. Less urgent now that
-      Ministral-3:3b's small footprint leaves more headroom overall.
+### 7.1 Open Items
+- [x] Replaced the invented `devstral-small-2`/`ministral-3:3b` model names with the
+      real model, `mistral-small-4-119b`, used for both code and vision.
+- [x] Removed the custom `provider` block from `opencode.json` — the local provider is
+      configured in opencode's system settings instead, so this repo no longer needs
+      to know the model server's address at all.
+- [ ] Confirm `mistral-small-4-119b`'s context window and update the context-budget
+      guidance in section 3.3 if it differs meaningfully from the previously assumed
+      65,536 tokens.
 
 ---
 
@@ -502,11 +387,12 @@ In addition to the functional tests, the test suites should **occasionally** be 
 check font family and font size.
 
 **Important constraint:** The finished Selenium test runs independently, with no access
-to Ministral-3:3b or any AI at runtime — AI (Devstral/Ministral-3:3b) is only used during
-the **generation** of the test, not during its **execution**. A layout check that would
-send a screenshot to Ministral-3:3b at runtime is therefore ruled out for now and will
-**not** be implemented. If that's wanted later (e.g. via a separate analysis step outside
-the Selenium test), it would need to be architecturally rethought — outside scope for now.
+to `mistral-small-4-119b` or any AI at runtime — the AI is only used during the
+**generation** of the test, not during its **execution**. A layout check that would
+send a screenshot to `mistral-small-4-119b` at runtime is therefore ruled out for now
+and will **not** be implemented. If that's wanted later (e.g. via a separate analysis
+step outside the Selenium test), it would need to be architecturally rethought —
+outside scope for now.
 
 ### 10.1 What Remains: `check-typography` (purely deterministic, no AI access at runtime)
 
@@ -519,8 +405,8 @@ tiers per element type such as heading/body text/button) — analogous to the
 `component-knowledge` skill, as another pre-prepared reference file
 (`references/design-tokens.md`, researched once by Claude, currently still
 TODO/unverified). This reference is only read during the **generation** of the test (by
-Devstral), not at runtime — the generated test itself ends up with only fixed expected
-values (e.g. as constants or in `config/test.properties`), no call to an AI.
+`mistral-small-4-119b`), not at runtime — the generated test itself ends up with only
+fixed expected values (e.g. as constants or in `config/test.properties`), no call to an AI.
 
 ### 10.2 Trigger Mechanism for "Occasional"
 
@@ -539,29 +425,28 @@ values (e.g. as constants or in `config/test.properties`), no call to an AI.
 - [ ] Clarify whether/how layout errors (overlap, alignment) could be checked without
       AI at runtime (e.g. purely geometrically via Selenium element
       coordinates/sizes, without image analysis) — a separate, still open topic, no
-      Ministral-3:3b use at runtime
+      AI use at runtime
 
 ---
 
 ## 11. Open Items / Next Steps (overall)
 
-- [x] `bootstrap.sh` decoupled from Ollama — now only sets up the local project
-      (config, health check against the external server, npm, Playwright). Ollama/models
-      run entirely separately, see section 5.
+- [x] `bootstrap.sh` decoupled from any model server — now only sets up the local
+      project (config, npm, Playwright). The model provider is configured entirely
+      separately, in opencode's system settings, see section 5.
 - [ ] Test `bootstrap.sh` against real systems (Linux + macOS) — see section 5.2
 - [x] `bootstrap.sh` extended: ask for the password silently (`read -rsp`) and write it
       to `.tools/secrets.env` (see section 6.2) — implemented, not yet tested
 - [x] `.gitignore` created (`.tools/`, `*.env`, `bootstrap.config`) — see section 6.2
 - [ ] Finalize the placeholder convention `$SECRET:NAME` (section 6.3) — not yet
       implemented in the custom tool (`playwright-explore.ts`), only specified
-- [x] Model connection specified (on the separate server): shared Ollama pool,
-      `OLLAMA_MAX_LOADED_MODELS=1` (now optional rather than required, see 7.2),
-      Devstral+Ministral-3:3b tags nailed down, model server at
-      `http://sriolo-desktop.local:11434` — see section 7. VRAM numbers not yet
-      verified on real hardware (section 7.4).
-- [x] Written the real `opencode.json` (verified `provider`/`@ai-sdk/openai-compatible`
-      syntax against the docs) — see section 7.3. Coupling to `MODEL_SERVER_URL` from
-      `bootstrap.config` still not automatic (manual sync for now).
+- [x] Model connection corrected: the earlier "Devstral"/"Ministral-3:3b" names were
+      invented and don't exist; the project uses the real model
+      `mistral-small-4-119b`, via a default provider configured in opencode's system
+      settings rather than a per-project `opencode.json` provider block — see section 7.
+- [x] Removed the custom `provider` block from `opencode.json` — no provider or model
+      is configured per-project anymore; model selection happens from within opencode
+      itself (see section 7.1).
 - [x] Built `.opencode/tools/playwright-explore.ts` (singleton browser, ARIA snapshot,
       screenshot path instead of base64, incl. secret placeholder resolution) — see
       4.2 + 6.3. Folder corrected to `tools/` (plural) — verified against the installed
@@ -582,7 +467,8 @@ values (e.g. as constants or in `config/test.properties`), no call to an AI.
       recording, translated to AGENTS.md login flow / selenium steps). Built-in `plan`
       agent disabled in `opencode.json`; `build` kept unrestricted for setup/git. All
       agents share one session (Tab-switch), so phase results hand over automatically;
-      per-phase tool restriction keeps Devstral's context and choices small.
+      per-phase tool restriction keeps `mistral-small-4-119b`'s context and choices
+      small.
 - [x] Researched `references/oblique-components.md` and `references/design-tokens.md`
       (see section 10.3) — still marked unverified/needs-review in-file since it's
       compiled from public docs, not hand-tested against a real Oblique app.

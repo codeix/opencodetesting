@@ -8,6 +8,5 @@ BASE_URL=https://example.test.app
 LOGIN_REQUIRED=y
 TEST_USER=testuser
 
-# Address of the separate Ollama model server (Devstral Small 2 + Ministral-3:3b).
-# See PLAN.md section 7.
-MODEL_SERVER_URL=http://sriolo-desktop.local:11434
+# The local model provider (mistral-small-4-119b) is configured in opencode's
+# system/global settings, not here. See PLAN.md section 7.

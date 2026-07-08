@@ -1,12 +1,12 @@
 ---
 description: >
-  Image-analysis sub-agent backed by Ministral-3:3b. Invoke ONLY for a rare visual
-  follow-up question when explore-page's ARIA snapshot leaves a specific element
-  genuinely ambiguous (e.g. two same-labeled buttons, an icon-only control, unclear
-  visual grouping). Never send a full-page screenshot or use this for anything the
-  ARIA snapshot already answers.
+  Image-analysis sub-agent for a rare visual follow-up question when explore-page's
+  ARIA snapshot leaves a specific element genuinely ambiguous (e.g. two same-labeled
+  buttons, an icon-only control, unclear visual grouping). Never send a full-page
+  screenshot or use this for anything the ARIA snapshot already answers. Uses the
+  default model configured for the local provider (system settings) — no model is
+  pinned here.
 mode: subagent
-model: local/ministral-3:3b
 permission:
   edit: deny
   bash: deny

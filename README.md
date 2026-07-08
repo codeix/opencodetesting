@@ -11,8 +11,9 @@ finished tests run on their own with plain Selenium, no AI needed.
 
 ## Prerequisites
 
-- The Ollama model server is running and reachable (`http://sriolo-desktop.local:11434`
-  with `devstral-small-2` and `ministral-3:3b`).
+- opencode's default providers are configured (a local provider serving
+  `mistral-small-4-119b`, set up in your system/global opencode settings — not in
+  this repo's `opencode.json`).
 - Java 17+ and Maven are installed.
 - Your application under test is running and reachable.
 
@@ -22,9 +23,9 @@ finished tests run on their own with plain Selenium, no AI needed.
 ./bootstrap.sh
 ```
 
-Asks for base URL, test username, model server address, and the test password
-(written silently to `.tools/secrets.env` — never committed, never shown to the AI).
-It also installs the npm dependencies and Playwright browsers, project-locally.
+Asks for base URL, test username, and the test password (written silently to
+`.tools/secrets.env` — never committed, never shown to the AI). It also installs
+the npm dependencies and Playwright browsers, project-locally.
 
 ## Daily use
 
@@ -134,8 +135,8 @@ fallback for setups that can't use symlinks at all (e.g. CI).
 
 ## Rules of thumb
 
-- One request = one test scenario. Small asks give better results — the local models
-  have a small context window.
+- One request = one test scenario. Small asks give better results — the local model
+  has a small context window.
 - Every generation/edit lands as a Git commit — use normal `git log` / `git revert`
   to inspect or undo.
 - Never paste a real password into the console. Use `$SECRET:NAME`.

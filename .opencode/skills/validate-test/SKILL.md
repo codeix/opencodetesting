@@ -25,7 +25,7 @@ trimmed Maven error block (file:line + message), never the full log/stack trace.
 3. On success: report pass, no further LLM call needed.
 4. On failure: extract only the relevant error lines (file:line + message); discard
    stack-trace noise.
-5. Hand the trimmed error to Devstral for exactly one fix suggestion, then route back
+5. Hand the trimmed error to `mistral-small-4-119b` for exactly one fix suggestion, then route back
    to `generate-test` or `edit-test` (whichever produced the failing file) with that
    specific error.
 6. Track attempts. After 3 failed attempts total for this test, stop looping and report

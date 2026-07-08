@@ -6,10 +6,10 @@ architecture and rationale: `@docs/PLAN.md`.
 ## What this project does
 
 Generates Java/Selenium tests with the Page Object pattern from a running web app
-(Angular/Oblique), using local models (Devstral for code, Ministral-3:3b for rare
-visual follow-ups) via the skill chain in `.opencode/skills/`. Playwright is used only
-internally, during generation, to "see" the page — it is never part of the delivered
-test and never runs at test time.
+(Angular/Oblique), using a local model (`mistral-small-4-119b`, for both code and
+rare visual follow-ups) via the skill chain in `.opencode/skills/`. Playwright is
+used only internally, during generation, to "see" the page — it is never part of
+the delivered test and never runs at test time.
 
 ## Console agents (Tab to switch)
 
@@ -74,7 +74,8 @@ project that reuses this install.
 
 - **Invoke a skill by reading its `SKILL.md` file directly** (e.g. `Read
   .opencode/skills/generate-test/SKILL.md`), not by relying on the `skill` tool.
-  The `skill` tool is unreliable with the local model — it sometimes announces
+  The `skill` tool is unreliable with the local model (`mistral-small-4-119b`) — it
+  sometimes announces
   intent to use a skill and never completes the call, then repeats the same
   announcement on the next turn with no progress (looks like a stall/loop, is
   actually this). Reading the file directly and following its procedure has been
@@ -146,8 +147,7 @@ No dedicated login skill or OIDC logic is needed — see `docs/PLAN.md` section 
 
 ## Model server
 
-Local Ollama server, connected via the `local` provider in `opencode.json`
-(`devstral-small-2` default, `ministral-3:3b` for the `vision` sub-agent). The server
-itself (`http://sriolo-desktop.local:11434`) is administered separately — `bootstrap.sh`
-only connects to it, never installs/manages Ollama or its models. See `docs/PLAN.md`
-section 7.
+A local provider serving `mistral-small-4-119b` (used for both code and the
+`vision` sub-agent), configured in opencode's system/global settings — not in this
+repo's `opencode.json`. The model server itself is administered separately;
+`bootstrap.sh` never installs/manages it or its models. See `docs/PLAN.md` section 7.
