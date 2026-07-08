@@ -92,6 +92,26 @@ mvn test
 
 Both are optional and unset by default — a normal system Chrome install needs neither.
 
+## Reusing this setup across multiple projects
+
+Don't copy this repo into each test-automation project — copies drift out of sync
+with no way to push updates back. Instead, keep a single clone of
+`opencodetesting` (e.g. `~/development/opencodetesting`) and have every project
+reference it:
+
+- **Agents/commands/skills** (`.opencode/`): point opencode at the shared clone
+  with the `OPENCODE_CONFIG_DIR` environment variable (or use
+  `~/.config/opencode/` if you want it active for every project on the
+  machine, not just one). opencode searches that directory for `agents/`,
+  `commands/`, `skills/`, `plugins/` exactly like a project-local `.opencode/`.
+- **`AGENTS.md` / `docs/` / `references/`**: allowlist the shared clone's
+  absolute path via `permission.external_directory` in the project's
+  `opencode.json` (see the entries already in this repo's `opencode.json`),
+  then reference the shared files by path from the project's own `AGENTS.md`.
+
+One `git pull` in the shared clone then updates every project that references
+it — no vendoring, no manual re-copying.
+
 ## Rules of thumb
 
 - One request = one test scenario. Small asks give better results — the local models
