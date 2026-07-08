@@ -38,7 +38,7 @@ a past fix for the same flaky selector or environment quirk may already be recor
 - Before finishing, record anything reusable with the `record-learning` tool — a fix
   for a recurring failure, an environment quirk, a decision about how to handle a
   flaky selector. One call per distinct note, one terse line per note. Skip it if
-  nothing came up that isn't already in `LEARNINGS.md`. The tool returns immediately
-  (the learnings subagent runs in the background) — don't wait for `LEARNINGS.md`
-  to change, don't retry, move straight to your summary. Never invoke the
-  `learnings` subagent any other way (in-chat call or task tool — both stall).
+  nothing came up that isn't already in `LEARNINGS.md`. The call blocks until the
+  subagent finishes and reports whether the note was recorded — this can take a
+  while on a local model, that's expected. Never invoke the `learnings` subagent
+  any other way (in-chat call or task tool — both stall).

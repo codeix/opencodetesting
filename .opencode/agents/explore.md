@@ -50,7 +50,7 @@ test scenario — you never write test code (that is the "selenium" agent's job)
 - Before finishing, record anything reusable with the `record-learning` tool — a
   navigation path, a reliable selector for a tricky element, a decision about how to
   handle an ambiguous case. One call per distinct note, one terse line per note.
-  Skip it if nothing came up that isn't already in `LEARNINGS.md`. The tool returns
-  immediately (the learnings subagent runs in the background) — don't wait for
-  `LEARNINGS.md` to change, don't retry, move straight to your summary. Never invoke
-  the `learnings` subagent any other way (in-chat call or task tool — both stall).
+  Skip it if nothing came up that isn't already in `LEARNINGS.md`. The call blocks
+  until the subagent finishes and reports whether the note was recorded — this can
+  take a while on a local model, that's expected. Never invoke the `learnings`
+  subagent any other way (in-chat call or task tool — both stall).

@@ -1,19 +1,18 @@
 import { tool } from "@opencode-ai/plugin"
-import { spawn } from "node:child_process"
-import { closeSync, existsSync, mkdirSync, openSync, writeSync } from "node:fs"
+import { spawnSync } from "node:child_process"
+import { existsSync } from "node:fs"
 import { join } from "node:path"
 
-// Fire-and-forget bridge to the "learnings" subagent. OpenCode's in-chat task tool
-// can't dispatch custom subagents (its subagent_type enum is hardcoded — see
-// opencode#20059/#29616), and there is no native background delegation yet
-// (opencode#5887), so this tool spawns `opencode run --agent learnings` as a
-// detached OS process instead. Replace with the native mechanism once it ships.
+// Synchronous bridge to the "learnings" subagent. OpenCode's in-chat task tool can't
+// dispatch custom subagents (its subagent_type enum is hardcoded — see
+// opencode#20059/#29616), so this tool blocks on `opencode run --agent learnings`
+// instead and returns its real result. Delete this file and go back to a plain
+// task-tool call once either of those upstream issues ships.
 export default tool({
   description:
     "Record one reusable fact about the testproject into LEARNINGS.md via the 'learnings' subagent — " +
-    "a navigation path, a reliable selector, a decision, a Selenium convention. Fire-and-forget: the " +
-    "subagent runs in a detached background process and this tool returns immediately, so never wait " +
-    "for LEARNINGS.md to change and never retry a note. One call per distinct note.",
+    "a navigation path, a reliable selector, a decision, a Selenium convention. Blocks until the " +
+    "subagent finishes and returns whether the note was recorded. One call per distinct note.",
   args: {
     note: tool.schema
       .string()
@@ -40,37 +39,24 @@ export default tool({
       )
     }
 
-    // The background run's output goes to .tools/learnings.log (gitignored, same
-    // place as recordings/secrets) — with a single-slot local model server the run
-    // queues behind the interactive session, and without a log a failure there is
-    // undiagnosable. The fd is a file, not a pipe, so inheriting it can't re-create
-    // the pipe-wait hang from opencode#20902; the parent closes its copy right away.
-    const logDir = join(context.directory, ".tools")
-    mkdirSync(logDir, { recursive: true })
-    const logPath = join(logDir, "learnings.log")
-    const log = openSync(logPath, "a")
-    writeSync(log, `\n--- ${new Date().toISOString()} record-learning: ${note}\n`)
+    // 15-minute cap: a non-interactive `opencode run` has no TTY, so a stray `ask`
+    // permission prompt would otherwise hang forever (root-caused in log.md's Known
+    // Gotchas) and freeze this whole turn with it. `learnings.md` has an explicit
+    // `permission.edit: allow` to keep that from firing in the first place; this is
+    // the backstop. cwd is the testproject — that's where the learnings agent
+    // resolves LEARNINGS.md (log.md pattern rule 3).
+    const result = spawnSync("opencode", ["run", "--agent", "learnings", note], {
+      cwd: context.directory,
+      encoding: "utf-8",
+      timeout: 15 * 60 * 1000,
+    })
 
-    // `timeout 900`: a non-interactive `opencode run` has no TTY, so a stray `ask`
-    // permission prompt would hang it forever (root-caused in log.md's Known
-    // Gotchas). Generous cap on purpose: on a single-slot model server the run
-    // first waits for the interactive session to go idle, then needs its own
-    // local-model turn — 300s proved too tight for that in practice.
-    // detached + unref(): the child gets its own process group, survives this
-    // session ending, and nothing waits on it.
-    // cwd must be the testproject (not the shared clone) — that's where the
-    // learnings agent resolves LEARNINGS.md (log.md pattern rule 3).
-    const child = spawn(
-      "timeout",
-      ["900", "opencode", "run", "--agent", "learnings", note],
-      { cwd: context.directory, detached: true, stdio: ["ignore", log, log] },
-    )
-    child.unref()
-    closeSync(log)
+    if (result.error) throw new Error(`Failed to run learnings subagent: ${result.error.message}`)
+    if (result.signal === "SIGTERM") throw new Error("learnings subagent timed out after 15 minutes")
+    if (result.status !== 0) {
+      throw new Error(`learnings subagent exited ${result.status}: ${result.stderr || result.stdout}`)
+    }
 
-    return (
-      `Note handed to the learnings subagent (background pid ${child.pid}). Do not wait or retry. ` +
-      `If LEARNINGS.md doesn't update, the developer can check ${logPath}.`
-    )
+    return result.stdout.trim() || "learnings subagent finished with no output."
   },
 })
