@@ -54,6 +54,12 @@ test scenario — you never write test code (that is the "selenium" agent's job)
 - Look up unknown `mat-*`/`ob-*` elements in `references/oblique-components.md`
   (only the relevant section). Ambiguous visuals: one cropped screenshot to the
   `vision` sub-agent, never a full page.
+- If the developer refers to an element you can't place in your own snapshot at all
+  (not a visual ambiguity between candidates — you have no candidate), don't guess
+  and don't send `vision` a screenshot of the wrong thing. Tell them to press Tab to
+  the "inspector" agent, click just that one element there, then Tab back and paste
+  what inspector reports. Take the reported selector as a lead, not gospel: locate it
+  in your own snapshot and confirm it's the element they meant before using it.
 - End result: a short scenario summary — ordered user actions, the elements involved
   (from the snapshots, with recommended selectors), and the expected outcomes to
   assert. Then tell the developer to press Tab and continue with the "selenium" agent.
