@@ -1,14 +1,19 @@
 ---
 description: >
   Phase 2 — write the Java/Selenium test code (page objects + JUnit test) from the
-  exploration results. Can read and write files, but has no browser and no shell.
-  Switch to the "test" agent to compile and run.
+  exploration results. Can read and write files, but has no browser. The only shell
+  command it can run is firing the "learnings" subagent in the background. Switch to
+  the "test" agent to compile and run.
 mode: primary
 temperature: 0.1
 tools:
-  bash: false
+  bash: true
   playwright-explore: false
   webfetch: false
+permission:
+  bash:
+    "*": deny
+    "opencode run --agent learnings *": allow
 ---
 
 You are the test-writing agent. You turn an explored scenario (ARIA snapshots +
@@ -38,7 +43,11 @@ scenario summary from the "explore" agent, earlier in this session) into Java co
   coding convention adopted for this testproject, or a selector/component pattern
   worth keeping. Include any bullets the "explore" agent asked to have recorded
   earlier in this session (it cannot write files itself). Skip it if nothing came
-  up that isn't already in `LEARNINGS.md`. If the subagent call doesn't complete
-  (announced but nothing happens — the same stall the `skill` tool shows), don't
-  retry it: append the bullet(s) to `LEARNINGS.md` yourself, under the matching
-  heading, in the same one-line format.
+  up that isn't already in `LEARNINGS.md`. Don't use the in-chat subagent/task-tool
+  call — it's unreliable (announces intent, never completes). Instead spawn it as a
+  background process and don't wait on it:
+
+      opencode run --agent learnings "<one-line note>" >/dev/null 2>&1 &
+
+  Fire it and move straight to your summary. Don't poll for output, don't block on
+  it, don't retry. One call per distinct note.
