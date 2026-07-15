@@ -19,13 +19,16 @@ finished tests run on their own with plain Selenium, no AI needed.
 
 ## One-time setup
 
-```bash
-./bootstrap.sh
-```
+- Create `config/test.properties` with the base URL and test username (never the
+  password — see `.gitignore`).
+- Create `.tools/secrets.env` (gitignored, `chmod 600`) with the test password, e.g.
+  `TEST_PASSWORD=...` — never committed, never shown to the AI.
+- Install Playwright's browser once, project-locally (npm dependencies are installed
+  automatically by opencode itself, see `.opencode/package.json`):
 
-Asks for base URL, test username, and the test password (written silently to
-`.tools/secrets.env` — never committed, never shown to the AI). It also installs
-the npm dependencies and Playwright browsers, project-locally.
+```bash
+cd .opencode && PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install chromium
+```
 
 ## Daily use
 

@@ -40,8 +40,6 @@ the later implementation phase — not now.
 
 ```
 project/
-├── bootstrap.sh                       # sets up ONLY the local project (npm, Playwright, config) — no sudo
-├── bootstrap.config.example           # template to pre-fill (optional, instead of interactive prompts)
 ├── .tools/                            # LOCAL ONLY, gitignored: secrets.env (model provider runs separately!)
 ├── .gitignore                        # must include .tools/ and *.env
 ├── opencode.json                     # opencode defaults (disabled agents, permissions, MCP servers if used) — no provider block; the local provider is configured in opencode's system settings
@@ -216,9 +214,9 @@ dedicated skill and no OIDC logic**.
   button), so `explore-page` can automatically repeat it on every new test run without
   asking again.
 - The credentials themselves (test user/password) come from the configuration
-  (`bootstrap.config` → `config/test.properties`, see section 5) — the login *flow*
-  (selectors/clicks) is separate from that and needs no secret handling, only the
-  credentials themselves (see the next open item).
+  (`config/test.properties`, created manually — see README.md "One-time setup") —
+  the login *flow* (selectors/clicks) is separate from that and needs no secret
+  handling, only the credentials themselves (see the next open item).
 
 This removes what was previously assessed as a complex login/auth architecture — the
 only remaining question is **how the test password is securely passed into this flow**
@@ -227,49 +225,7 @@ That is the subject of the next planning step: secrets handling.
 
 ---
 
-## 5. Bootstrap (local project only, model provider configured separately)
-
-**Problem:** So far there is no step that sets up a new project once. `pom.xml`,
-`config/test.properties`, `.opencode/package.json`, and Playwright browsers would
-otherwise have to be prepared by hand — that contradicts the "usable out of the box"
-goal.
-
-**Important boundary:** The local model provider (`mistral-small-4-119b`, see section 7)
-is configured in opencode's **system/global settings**, not per-project, and is **not**
-installed, started, or managed by `bootstrap.sh`. `bootstrap.sh` concerns only the
-local project (this repo) and assumes opencode's default providers are already usable.
-
-**Solution:** `bootstrap.sh` in the project root. Runs once (or again as needed) and
-installs **everything project-local, no sudo, no system changes**:
-
-| Step | Does what | Where? |
-|---|---|---|
-| 1 | Generate project configuration (base URL, login) | `config/test.properties` |
-| 2 | Install npm dependencies | `.opencode/node_modules/` |
-| 3 | Install Playwright browsers (`PLAYWRIGHT_BROWSERS_PATH=0`) | `.opencode/node_modules/` instead of `~/.cache` |
-
-No step needs root privileges or changes anything outside the project folder.
-
-### 5.1 Configuration: File AND interactive (both)
-
-- If `bootstrap.config` exists in the project root → values are taken from it.
-- If the file or individual values are missing → asked interactively (base URL,
-  whether login is needed, test username).
-- `bootstrap.config.example` is included as a template in the repo, so it can be copied
-  and pre-filled if desired, instead of answering interactively every time.
-- **No password** ends up in `bootstrap.config` or `test.properties` — see section 6
-  (secrets handling).
-
-### 5.2 Open Items for Bootstrap
-- [ ] What happens if `.opencode/package.json` (custom tool) doesn't exist yet at
-      bootstrap time? Currently: the step is skipped, no abort — reasonable, but the
-      user shouldn't miss this (a clearer warning may be needed).
-- [ ] Should `bootstrap.sh` also check whether `java`/`mvn` (or the Maven wrapper) are
-      present? Not included currently.
-
----
-
-## 6. Secrets Handling
+## 5. Secrets Handling
 
 **Goal:** The test password must never be sent in plaintext to `mistral-small-4-119b`, must
 never end up in the repo, but must still be automatically available — both during
@@ -280,24 +236,23 @@ Selenium test.
 test password" belongs at a given spot, not what its value is. Resolving the actual
 value happens outside the prompt, in code that already has filesystem access anyway.
 
-### 6.1 Two Separate Places Where the Password Is Needed
+### 5.1 Two Separate Places Where the Password Is Needed
 
 | Point in time | Who needs the password | How it's resolved | Does the AI see the value? |
 |---|---|---|---|
 | **Generation** (Playwright logs in to explore authenticated pages) | `.opencode/tools/playwright-explore.ts` (custom tool) | The tool only gets a placeholder from the AI (e.g. `"$SECRET:TEST_PASSWORD"`) as the `fill` value, and resolves it itself from a local, non-versioned secrets file | **No** — placeholder in the prompt, real value only in the tool code |
 | **Runtime** (the finished Selenium test logs in) | Java base class (`BaseTest`) | Reads the password itself at runtime from an environment variable/local properties file, never as a literal in the generated `.java` code | **No** — `generate-test` is instructed to always write `TestConfig.get("test.password")`, never the value itself |
 
-### 6.2 Where the Password Actually Lives
+### 5.2 Where the Password Actually Lives
 
-- New, **non-versioned** file: `.tools/secrets.env` (analogous to the `.tools/` folder
-  from bootstrap — already gitignored).
-- `bootstrap.sh` asks for the password **silently** (`read -rsp`, no terminal echo) and
-  writes it exclusively there, with restrictive file permissions (`chmod 600`) —
-  **not** into `config/test.properties` (which stays commit-friendly, without secrets).
+- New, **non-versioned** file: `.tools/secrets.env`, gitignored.
+- Created manually by the developer, with restrictive file permissions (`chmod 600`)
+  — **not** into `config/test.properties` (which stays commit-friendly, without
+  secrets).
 - The project root `.gitignore` must include `.tools/` (and explicitly `*.env` too), so
   nothing gets checked in even by accidental copying.
 
-### 6.3 Placeholder Convention (draft)
+### 5.3 Placeholder Convention (draft)
 
 - When defining the login flow once (section 4.3), the developer does not write the
   real password into the login note, but the placeholder, e.g.:
@@ -310,12 +265,11 @@ value happens outside the prompt, in code that already has filesystem access any
   `"filled"`), so the password can't reappear in the context via a detour through the
   tool response either.
 
-### 6.4 Open Items
+### 5.4 Open Items
 - [ ] Define the exact syntax of the placeholder convention (currently only a draft:
       `$SECRET:NAME`)
 - [ ] How does `.tools/secrets.env` get populated in a CI environment (no interactive
-      `bootstrap.sh` possible) — presumably via the CI's own secret variables, still
-      open
+      setup step exists) — presumably via the CI's own secret variables, still open
 - [ ] Check/decide: should `validate-test` (section 4) automatically check for
       accidentally hardcoded passwords in generated Java code (a simple grep as an
       extra safety net)?
@@ -326,7 +280,7 @@ value happens outside the prompt, in code that already has filesystem access any
 
 ---
 
-## 7. Model Connection (Mistral Small 4 119B, default providers)
+## 6. Model Connection (Mistral Small 4 119B, default providers)
 
 **Correction from an earlier planning version:** This section previously assumed two
 separate small models — "Devstral Small 2" for code and "Ministral-3:3b" for vision —
@@ -345,14 +299,13 @@ not hardcoded per project. See `opencode.json` in the repo root.
 - The `vision` sub-agent (`.opencode/agents/vision.md`) likewise does not pin a
   `model:` field — it uses whatever default model is configured, currently
   `mistral-small-4-119b`.
-- `bootstrap.sh` does not install, manage, or health-check any model server — that is
-  entirely out of scope for a per-project script now that the provider is a system-level
-  concern (see section 5).
+- No per-project script installs, manages, or health-checks the model server — it is
+  entirely a system-level concern, configured in opencode's global settings.
 - Context budget rules (section 3.3) still apply regardless of exactly how the provider
   is wired up: `mistral-small-4-119b` is still a comparatively small/local model, so
   skills must stay narrowly scoped.
 
-### 7.1 Open Items
+### 6.1 Open Items
 - [x] Replaced the invented `devstral-small-2`/`ministral-3:3b` model names with the
       real model, `mistral-small-4-119b`, used for both code and vision.
 - [x] Removed the custom `provider` block from `opencode.json` — the local provider is
@@ -364,7 +317,7 @@ not hardcoded per project. See `opencode.json` in the repo root.
 
 ---
 
-## 8. Java Project Conventions (apply to all generated files)
+## 7. Java Project Conventions (apply to all generated files)
 
 - Page objects: `src/test/java/pages/<Name>Page.java`, `@FindBy` selectors from the DOM
   snapshot, no hardcoded waits (`Thread.sleep`).
@@ -375,7 +328,7 @@ not hardcoded per project. See `opencode.json` in the repo root.
 
 ---
 
-## 9. Editing Existing Tests
+## 8. Editing Existing Tests
 
 - No custom versioning format — every generation/edit is a Git commit.
 - `edit-test` only gets the affected excerpt (method/class), not the whole repo, to
@@ -384,7 +337,7 @@ not hardcoded per project. See `opencode.json` in the repo root.
 
 ---
 
-## 10. Occasional Typography Check
+## 9. Occasional Typography Check
 
 In addition to the functional tests, the test suites should **occasionally** be able to
 check font family and font size.
@@ -397,7 +350,7 @@ and will **not** be implemented. If that's wanted later (e.g. via a separate ana
 step outside the Selenium test), it would need to be architecturally rethought —
 outside scope for now.
 
-### 10.1 What Remains: `check-typography` (purely deterministic, no AI access at runtime)
+### 9.1 What Remains: `check-typography` (purely deterministic, no AI access at runtime)
 
 | Check | Method | Skill | Runs at runtime? |
 |---|---|---|---|
@@ -411,7 +364,7 @@ TODO/unverified). This reference is only read during the **generation** of the t
 `mistral-small-4-119b`), not at runtime — the generated test itself ends up with only
 fixed expected values (e.g. as constants or in `config/test.properties`), no call to an AI.
 
-### 10.2 Trigger Mechanism for "Occasional"
+### 9.2 Trigger Mechanism for "Occasional"
 
 - Test methods get their own JUnit tag, e.g. `@Tag("typography-check")`.
 - This tag does **not** run on every normal functional test pass, but instead:
@@ -421,7 +374,7 @@ fixed expected values (e.g. as constants or in `config/test.properties`), no cal
 - The exact trigger rule (rate, schedule, which pages) is still open and will only be
   decided during the implementation phase.
 
-### 10.3 Open Items
+### 9.3 Open Items
 - [ ] Create `references/design-tokens.md` (font family/sizes from the Oblique docs,
       currently unverified — same limitation as `oblique-components.md`)
 - [ ] Define a sampling/scheduling strategy for the `typography-check` tag
@@ -432,27 +385,27 @@ fixed expected values (e.g. as constants or in `config/test.properties`), no cal
 
 ---
 
-## 11. Open Items / Next Steps (overall)
+## 10. Open Items / Next Steps (overall)
 
-- [x] `bootstrap.sh` decoupled from any model server — now only sets up the local
-      project (config, npm, Playwright). The model provider is configured entirely
-      separately, in opencode's system settings, see section 5.
-- [ ] Test `bootstrap.sh` against real systems (Linux + macOS) — see section 5.2
-- [x] `bootstrap.sh` extended: ask for the password silently (`read -rsp`) and write it
-      to `.tools/secrets.env` (see section 6.2) — implemented, not yet tested
-- [x] `.gitignore` created (`.tools/`, `*.env`, `bootstrap.config`) — see section 6.2
-- [ ] Finalize the placeholder convention `$SECRET:NAME` (section 6.3) — not yet
+- [x] Removed `bootstrap.sh`/`bootstrap.config.example` — no longer made sense once
+      `.opencode` is a shared, symlinked install rather than something set up
+      per-project by a local script (see `INSTALL.md`). Project-local setup (config,
+      secrets, Playwright browsers) is now done manually — see README.md "One-time
+      setup" and section 5.2. The model provider was already configured entirely
+      separately, in opencode's system settings, unaffected by this removal.
+- [x] `.gitignore` created (`.tools/`, `*.env`) — see section 5.2
+- [ ] Finalize the placeholder convention `$SECRET:NAME` (section 5.3) — not yet
       implemented in the custom tool (`playwright-explore.ts`), only specified
 - [x] Model connection corrected: the earlier "Devstral"/"Ministral-3:3b" names were
       invented and don't exist; the project uses the real model
       `mistral-small-4-119b`, via a default provider configured in opencode's system
-      settings rather than a per-project `opencode.json` provider block — see section 7.
+      settings rather than a per-project `opencode.json` provider block — see section 6.
 - [x] Removed the custom `provider` block from `opencode.json` — no provider or model
       is configured per-project anymore; model selection happens from within opencode
-      itself (see section 7.1).
+      itself (see section 6.1).
 - [x] Built `.opencode/tools/playwright-explore.ts` (singleton browser, ARIA snapshot,
       screenshot path instead of base64, incl. secret placeholder resolution) — see
-      4.2 + 6.3. Folder corrected to `tools/` (plural) — verified against the installed
+      4.2 + 5.3. Folder corrected to `tools/` (plural) — verified against the installed
       OpenCode binary, the earlier `tool/` (singular) in this plan was wrong.
 - [x] Decided: custom tool (not the ready-made Playwright MCP server) — implemented in
       `.opencode/tools/playwright-explore.ts`, see section 4.2.
@@ -463,7 +416,7 @@ fixed expected values (e.g. as constants or in `config/test.properties`), no cal
       env/`.tools/secrets.env` secret resolution, BaseTest) and is run once per project
       before the first generation, or when `validate-test` finds them missing.
 - [x] Wrote all skill files, including `explore-page` and `check-typography` (see
-      section 10) — see `.opencode/skills/`.
+      section 9) — see `.opencode/skills/`.
 - [x] Phase-specific primary agents added (2026-07-08, decision by the developer):
       `explore` (browser only, read-only), `selenium` (code writing, no browser/shell),
       `test` (mvn + auto-fix, hard 3-attempt limit), `inspector` (Playwright codegen
@@ -473,6 +426,6 @@ fixed expected values (e.g. as constants or in `config/test.properties`), no cal
       per-phase tool restriction keeps `mistral-small-4-119b`'s context and choices
       small.
 - [x] Researched `references/oblique-components.md` and `references/design-tokens.md`
-      (see section 10.3) — still marked unverified/needs-review in-file since it's
+      (see section 9.3) — still marked unverified/needs-review in-file since it's
       compiled from public docs, not hand-tested against a real Oblique app.
 

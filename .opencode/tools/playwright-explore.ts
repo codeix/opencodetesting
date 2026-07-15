@@ -12,7 +12,7 @@ const SECRET_PLACEHOLDER = /^\$SECRET:(.+)$/
 
 // Resolves a "$SECRET:NAME" placeholder from .tools/secrets.env. The AI only ever
 // sees the placeholder in its own tool call; the real value never enters the prompt
-// or the tool's return value. See docs/PLAN.md section 6.3.
+// or the tool's return value. See docs/PLAN.md section 5.3.
 function resolveValue(value: string, projectDirectory: string): string {
   const match = SECRET_PLACEHOLDER.exec(value)
   if (!match) return value
@@ -23,7 +23,7 @@ function resolveValue(value: string, projectDirectory: string): string {
   try {
     contents = readFileSync(secretsPath, "utf-8")
   } catch {
-    throw new Error(`Secret "${name}" was requested but ${secretsPath} does not exist. Run bootstrap.sh first.`)
+    throw new Error(`Secret "${name}" was requested but ${secretsPath} does not exist. Create it manually (see AGENTS.md "Secrets").`)
   }
 
   for (const line of contents.split("\n")) {

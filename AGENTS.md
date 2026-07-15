@@ -114,7 +114,7 @@ project that reuses this install.
   `.tools/secrets.env`, which is gitignored and never enters the AI's context.
 - Generated Java tests read secrets at runtime via `TestConfig`
   (`TestConfig.get("test.password")`), never as a literal in `.java` source.
-- See `docs/PLAN.md` section 6 for the full rationale.
+- See `docs/PLAN.md` section 5 for the full rationale.
 
 ## Login flow
 
@@ -149,5 +149,5 @@ No dedicated login skill or OIDC logic is needed — see `docs/PLAN.md` section 
 
 A local provider serving `mistral-small-4-119b` (used for both code and the
 `vision` sub-agent), configured in opencode's system/global settings — not in this
-repo's `opencode.json`. The model server itself is administered separately;
-`bootstrap.sh` never installs/manages it or its models. See `docs/PLAN.md` section 7.
+repo's `opencode.json`. The model server itself is administered entirely separately,
+outside this project. See `docs/PLAN.md` section 6.
