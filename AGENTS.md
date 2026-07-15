@@ -16,16 +16,19 @@ the delivered test and never runs at test time.
 Phase-specific primary agents keep the small model's context and tool set narrow.
 They share one session, so each phase sees the previous phase's results:
 
-- `explore` — drive the visible browser, understand the scenario (read-only, no code).
-- `selenium` — write page objects + tests from the exploration (no browser, no shell).
+- `explore` — interactively build a numbered test scenario with the developer, one
+  step at a time (read-only, no code). Never a one-shot autonomous exploration.
+- `selenium` — write page objects + tests from the finalized scenario (no browser,
+  no shell).
 - `test` — `mvn` compile/run, analyze failures, auto-fix (max 3 attempts, then report).
 - `inspector` — launch Playwright codegen so the developer records a flow themselves,
-  then translate the recording (login flow → ai/learnings, scenario → selenium steps).
+  then translate the recording (login flow → ai/learnings, scenario → explore verifies
+  and persists it).
 - `build` — unrestricted; setup (`setup-java-skeleton`), git, housekeeping.
 
 The built-in `plan` agent is disabled in `opencode.json`. The `vision` sub-agent is
-unchanged (rare visual follow-ups only). The `learnings` sub-agent is not
-Tab-switchable — the phase agents call it themselves (see below).
+unchanged (rare visual follow-ups only). The `learnings` and `scenario` sub-agents are
+not Tab-switchable — the phase agents call them directly (see below).
 
 ## Shared knowledge (ai/learnings)
 
@@ -71,6 +74,27 @@ project that reuses this install.
   everything that's specific to one testproject — including its login flow (see
   "Login flow" below).
 
+## Test scenarios (ai/scenario/)
+
+`ai/scenario/<name>.md` is the persisted, numbered, ordered step list for one named
+test scenario (e.g. `ai/scenario/search_form.md`) — the authoritative record of what
+a test does, separate from the chat that built it.
+
+- Built interactively by `explore`, one confirmed step at a time, and persisted via
+  the `scenario` sub-agent (`.opencode/agents/scenario.md`) — the same
+  write-through-a-subagent pattern as `ai/learnings`, since `explore` cannot write
+  files itself.
+- Same numbered fill/click/assert format as the "Login flow" section below. Step
+  numbers are never reassigned, even when earlier steps are later edited.
+- The developer can resume a scenario and replay a range ("play all steps until step
+  5") or edit a specific step by number — see `docs/PLAN.md` section 4.4 for the full
+  workflow.
+- `selenium` reads it directly (plain file read, no sub-agent needed) as the
+  authoritative input for `generate-pageobject`/`generate-test` — not just what was
+  discussed in the "explore" chat.
+- Committed like `ai/learnings` — it's meant to be shared with the team, not just
+  the AI.
+
 ## Skill chain rules
 
 - **Invoke a skill by reading its `SKILL.md` file directly** (e.g. `Read
@@ -91,7 +115,9 @@ project that reuses this install.
 - One-time setup: if `pom.xml` or `TestConfig` doesn't exist yet, run
   `setup-java-skeleton` first (once per project) — otherwise `validate-test` cannot
   compile anything.
-- Standard chain for "new test": `explore-page` → `component-knowledge` (as needed) →
+- Building a scenario is interactive, not chained: `explore` calls `explore-page` once
+  per confirmed step, never all at once — see "Test scenarios" above.
+- Standard chain once a scenario is finalized: `component-knowledge` (as needed) →
   `generate-pageobject` → `generate-test` → `validate-test`. On a validation failure,
   loop back to `generate-test` (or `generate-pageobject` if the error is selector-
   related) — max 3 attempts, then stop and report the error instead of looping.

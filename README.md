@@ -46,8 +46,8 @@ already discussed) carries over:
 
 | Agent | Phase |
 |---|---|
-| `explore` | Open the browser, click through the app, understand the scenario |
-| `selenium` | Write the page objects and JUnit test from the exploration |
+| `explore` | Interactively build a numbered test scenario with you, one step at a time |
+| `selenium` | Write the page objects and JUnit test from the finalized scenario |
 | `test` | Compile/run with Maven, auto-fix failures (stops after 3 attempts) |
 | `inspector` | You record a flow in Playwright codegen; the AI translates it |
 | `build` | Everything else: skeleton setup, git, housekeeping |
@@ -57,14 +57,15 @@ Then just talk to it. Typical requests:
 | You want | Say / type |
 |---|---|
 | First run ever | "Set up the Java skeleton" (creates `pom.xml`, `TestConfig`, folders — once per project) |
-| Look at a page | "Open the browser at https://myapp.local/orders" |
-| New test | `/new-test <url> <scenario>` — e.g. `/new-test https://myapp.local/orders "create a new order and check it appears in the list"` |
+| Build a new scenario | To "explore": "let's work on search_form. Open https://myapp.local/orders" — it asks what to do next, one step at a time, and saves each confirmed step to `ai/scenario/search_form.md` |
+| Resume a scenario | To "explore": "we want to work on search_form, open the browser and play all steps until step 5" — it replays steps 1-5 live, then continues from there |
+| Edit a scenario step | To "explore": "on search_form, change step 3 to click the Export button instead" |
 | Change a test | `/edit-test src/test/java/tests/OrderTest.java "also assert the success toast"` |
 | Typography check | "Add a typography check for the orders page" |
 
-The agent chains the steps itself: explore page → generate page object → generate
-test → compile-check with Maven. If compilation fails it retries up to 3 times, then
-reports the error to you.
+Once a scenario is finalized, press Tab to "selenium" — it reads `ai/scenario/<name>.md`
+and writes the page object + JUnit test from it, then Tab to "test" to compile-check
+with Maven (retries up to 3 times on failure, then reports the error).
 
 ## Shared knowledge across sessions
 
@@ -132,8 +133,9 @@ it — no vendoring, no manual re-copying.
 
 Everything that's testproject-local (never symlinked, never shared) lives under one
 `ai/` folder instead of scattered dotfiles: `ai/learnings` (committed), `ai/scenario/`
-(committed, one file per `/new-test` run), and `ai/.install/` (gitignored — secrets,
-Playwright's project-local browser install, codegen recordings).
+(committed, one numbered file per named scenario, built interactively with "explore"),
+and `ai/.install/` (gitignored — secrets, Playwright's project-local browser install,
+codegen recordings).
 
 **Fastest way to set this up:** in the other project, open `opencode` and
 paste in the raw link to [`INSTALL.md`](INSTALL.md)

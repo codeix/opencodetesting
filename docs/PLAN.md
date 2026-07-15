@@ -66,12 +66,12 @@ opencodetesting/
     ├── agents/
     │   ├── vision.md                 # sub-agent that uses the configured local model (only for screenshots)
     │   ├── learnings.md               # sub-agent that maintains ai/learnings for a testproject
-    │   ├── explore.md                # primary agent, phase 1: browser exploration (read-only)
+    │   ├── scenario.md                # sub-agent that maintains ai/scenario/<name>.md for a testproject
+    │   ├── explore.md                # primary agent, phase 1: interactive scenario building (read-only)
     │   ├── selenium.md                # primary agent, phase 2: write page objects + tests (no browser/shell)
     │   ├── test.md                   # primary agent, phase 3: mvn run + auto-fix (max 3 attempts)
     │   └── inspector.md              # primary agent: Playwright codegen recording + translation
     └── commands/
-        ├── new-test.md               # /new-test <url> <scenario>
         └── edit-test.md              # /edit-test <test-file> <change>
 ```
 
@@ -89,7 +89,7 @@ symlinks get created):
 ├── ai/
 │   ├── .gitignore                    # ignores .install/ only — learnings and scenario/ ARE committed
 │   ├── learnings                     # testproject-specific knowledge (was LEARNINGS.md at root) — committed
-│   ├── scenario/                     # one file per /new-test scenario, for reproducibility — committed
+│   ├── scenario/                     # one numbered, editable file per named scenario (see section 4.3) — committed
 │   └── .install/                     # LOCAL ONLY, gitignored
 │       ├── secrets.env               # test password etc., chmod 600 (see section 5)
 │       └── playwright/               # PLAYWRIGHT_BROWSERS_PATH target — browser binaries, project-local
@@ -156,8 +156,11 @@ Every SKILL.md must contain these four sections, in this order:
 | 4 | `validate-test` | Test class + page object | `mvn test-compile`/run result, on error: error message | no LLM (only for a fix suggestion: `mistral-small-4-119b`) |
 | 5 | `edit-test` | existing file (excerpt) + change request | updated excerpt | `mistral-small-4-119b` |
 
-**Autonomous iteration planning:** The agent chains 1→2→3→4 automatically for "new
-test" requests. On validation failures it jumps back to step 3 (max. 3 attempts), then
+**Iteration planning:** Step 1 (`explore-page`) is driven **interactively** by the
+developer through the "explore" agent — one confirmed step at a time, not run
+automatically (see section 4.4). Once the developer finalizes a scenario, steps 2→3→4
+chain automatically: "selenium" writes the page object + test, then "test" runs
+`validate-test`. On validation failures it jumps back to step 3 (max. 3 attempts), then
 aborts with an error report to the developer instead of looping forever.
 
 ### 4.1 Special case: `component-knowledge` as a pre-prepared knowledge skill
@@ -242,6 +245,37 @@ This removes what was previously assessed as a complex login/auth architecture �
 only remaining question is **how the test password is securely passed into this flow**
 without ending up in the prompt to `mistral-small-4-119b` or in plaintext in the repo.
 That is the subject of the next planning step: secrets handling.
+
+### 4.4 Interactive Scenario Building (`ai/scenario/`)
+
+**Decision (2026-07-15):** `explore` is not a one-shot autonomous exploration handed
+off with a chat summary — it's an interactive, conversational session with the
+developer, and the persisted artifact is `ai/scenario/<name>.md`, not the chat
+history. This replaced the earlier `/new-test <url> <scenario>` command, which ran
+the whole chain autonomously "without asking for confirmation between steps" —
+incompatible with wanting the developer to be asked, one step at a time.
+
+- **One step at a time.** The developer says what to do next; `explore` confirms the
+  target element against a live ARIA snapshot (never from memory), executes it via
+  `playwright-explore`, then persists that one confirmed step before asking about the
+  next. Never a whole scenario written in one shot.
+- **Persistence via the `scenario` subagent** (`.opencode/agents/scenario.md`), the
+  same pattern as `learnings`: `explore` cannot write files itself, so it hands each
+  confirmed step to `scenario`, which appends it to `ai/scenario/<name>.md` as the
+  next number.
+- **Format:** numbered steps, one per line, same numbered fill/click/assert
+  convention as the login flow (`AGENTS.md` "Login flow" section) — action, selector,
+  short plain-language context. Numbers are never reassigned, even when earlier steps
+  are later edited.
+- **Resuming and partial replay:** the developer can name an existing scenario and a
+  range (e.g. "play all steps until step 5"); `explore` reads that range from
+  `scenario` and replays it live before continuing the conversation from there.
+- **Editing:** the developer can name a step number and a change; `explore` verifies
+  the new element live, then has `scenario` rewrite just that line in place.
+- **Handoff:** once the developer says the scenario is ready, `explore` tells them to
+  press Tab to "selenium", which reads `ai/scenario/<name>.md` directly (no subagent
+  needed for reading — it already has file access) as the authoritative, ordered step
+  list for `generate-pageobject`/`generate-test`.
 
 ---
 
@@ -421,9 +455,20 @@ fixed expected values (e.g. as constants or in `config/test.properties`), no cal
       project-local now, via `PLAYWRIGHT_BROWSERS_PATH` — previously it installed
       inside `.opencode/node_modules`, i.e. physically inside the shared symlinked
       clone, shared by every testproject using it), and codegen recordings moved to
-      `ai/.install/recordings/`. New: `ai/scenario/`, one file per `/new-test` run,
-      for reproducibility. The `.opencode`/`.opencodetesting` symlinks stay at the
-      project root, unaffected — `opencode` only discovers `.opencode/` there.
+      `ai/.install/recordings/`. New: `ai/scenario/`, one numbered file per named
+      scenario (see section 4.4). The `.opencode`/`.opencodetesting` symlinks stay at
+      the project root, unaffected — `opencode` only discovers `.opencode/` there.
+- [x] Redesigned `explore` from a one-shot autonomous exploration into an interactive,
+      conversational scenario-building session — one confirmed step at a time, never
+      a whole scenario handed off in one shot (see section 4.4). Added the `scenario`
+      sub-agent (`.opencode/agents/scenario.md`), which persists/edits/replays
+      `ai/scenario/<name>.md`, the same write-through-a-subagent pattern as
+      `learnings`. Removed the `/new-test <url> <scenario>` command entirely — it ran
+      the whole chain autonomously "without asking for confirmation between steps,"
+      which is incompatible with the new interactive model; there is no slash-command
+      replacement, scenario building now happens entirely through conversation with
+      `explore`. `selenium` now reads `ai/scenario/<name>.md` directly as its
+      authoritative input instead of a chat-only scenario summary.
 - [x] `.gitignore` created — testproject's `ai/.gitignore` covers `.install/`; this
       shared repo's own `.gitignore` covers `*.env` and, as a safety net, `/ai/` in
       case it's ever accidentally created here — see section 5.2

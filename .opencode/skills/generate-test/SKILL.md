@@ -2,8 +2,8 @@
 name: generate-test
 description: >
   Generates exactly ONE JUnit 5 test class/method from a page object (from
-  generate-pageobject) plus a plain-language scenario. Use this right after
-  generate-pageobject for a "new test" request — one skill call per test method, never
+  generate-pageobject) plus the finalized `ai/scenario/<name>.md` numbered steps. Use
+  this right after generate-pageobject — one skill call per test method, never
   a whole suite in one call. Do NOT invent new selectors here; if a needed action is
   missing from the page object, that goes back through generate-pageobject instead.
 ---
@@ -12,7 +12,8 @@ description: >
 
 ## Input
 The page object's public method signatures (excerpt, not necessarily the whole file
-unless it's already under 80 lines) plus a one-sentence test scenario description.
+unless it's already under 80 lines) plus the finalized `ai/scenario/<name>.md`
+numbered steps (the ordered actions and expected outcomes to assert).
 
 ## Context budget
 Page object excerpt (signatures only where possible) + the scenario text. No DOM

@@ -2,11 +2,10 @@
 name: explore-page
 description: >
   Drives the playwright-explore tool to open a URL and capture its ARIA snapshot as
-  text (and, rarely, a cropped screenshot). Use this FIRST for any "new test",
-  "generate a page object for X", or "explore this page" request, before
-  generate-pageobject — never guess a page's structure from memory or from HTML you
-  weren't given. Also use for a small, targeted re-check when edit-test needs one new
-  selector that isn't already known.
+  text (and, rarely, a cropped screenshot). Used by the "explore" agent for each
+  individual step of an interactive scenario-building session — never guess a page's
+  structure from memory or from HTML you weren't given. Also use for a small,
+  targeted re-check when edit-test needs one new selector that isn't already known.
 ---
 
 # explore-page
@@ -33,8 +32,10 @@ image data) to the `vision` sub-agent for that one question.
 4. Only if one specific element's role/purpose stays ambiguous after reading the
    snapshot, call `action: "screenshot"` with a tight `clip` region around just that
    element, then ask the `vision` sub-agent one specific question about it.
-5. Pass the ARIA snapshot text straight to `generate-pageobject` — do not summarize,
-   reformat, or drop structural detail from it.
+5. Return the ARIA snapshot text verbatim to the calling agent — do not summarize,
+   reformat, or drop structural detail from it. The "explore" agent uses it to confirm
+   the current step with the developer before persisting it via the `scenario`
+   sub-agent; it is not forwarded straight to `generate-pageobject`.
 
 ## Output
 The ARIA snapshot as plain text (verbatim tool output), plus an optional screenshot

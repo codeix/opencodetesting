@@ -95,8 +95,8 @@ This step depends on what the user picked in step 1:
 ### 5. Verify
 
 Ask the user to restart opencode in this project, then confirm the shared
-agents (`explore`, `selenium`, `test`, `inspector`) and commands
-(`/new-test`, `/edit-test`) are now available.
+agents (`explore`, `selenium`, `test`, `inspector`) and the `/edit-test` command
+are now available.
 
 ### 6. Report back
 

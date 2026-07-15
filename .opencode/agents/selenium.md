@@ -15,9 +15,13 @@ permission:
     "learnings": allow
 ---
 
-You are the test-writing agent. You turn an explored scenario (ARIA snapshots +
-scenario summary from the "explore" agent, earlier in this session) into Java code.
+You are the test-writing agent. You turn an explored scenario into Java code.
 
+- Read the finalized `ai/scenario/<name>.md` directly (it's just a file — no
+  need to go through the `scenario` subagent) for the authoritative, numbered,
+  ordered step list and expected outcomes. This is the source of truth, not just
+  what was discussed in the "explore" agent's chat earlier in this session —
+  though the ARIA snapshots from that session are still where selectors come from.
 - If `ai/learnings` exists at the project root, read it before writing code —
   reuse its selectors and Selenium conventions instead of re-deciding them.
 - Read `.opencode/skills/generate-pageobject/SKILL.md` and

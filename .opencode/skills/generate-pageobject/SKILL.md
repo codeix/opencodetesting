@@ -1,9 +1,9 @@
 ---
 name: generate-pageobject
 description: >
-  Generates exactly ONE Java Selenium Page Object class (@FindBy pattern) from an
-  ARIA/DOM snapshot produced by explore-page. Use this immediately after
-  explore-page for a "new test"/"new page object" request. Do NOT use this to also
+  Generates exactly ONE Java Selenium Page Object class (@FindBy pattern) from the
+  ARIA/DOM snapshots gathered while exploring a finalized `ai/scenario/<name>.md`.
+  Used by the "selenium" agent once a scenario is ready. Do NOT use this to also
   write the test method — that's generate-test's job; never combine the two in one
   call.
 ---
@@ -11,7 +11,8 @@ description: >
 # generate-pageobject
 
 ## Input
-The ARIA/DOM snapshot text from `explore-page`, plus selector guidance from
+The finalized `ai/scenario/<name>.md` steps, plus the ARIA/DOM snapshot text from
+`explore-page` calls made while that scenario was built, plus selector guidance from
 `component-knowledge` for any Material/Oblique components present in that snapshot.
 
 ## Context budget
