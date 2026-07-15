@@ -112,7 +112,7 @@ The list of files created (or skipped as already present) plus the result line o
 base.url=<BASE_URL>
 test.username=<TEST_USERNAME>
 # The password is NOT here. TestConfig resolves secret("TEST_PASSWORD") from the
-# TEST_PASSWORD environment variable or .tools/secrets.env (gitignored).
+# TEST_PASSWORD environment variable or ai/.install/secrets.env (gitignored).
 ```
 
 ## Template: src/test/java/support/TestConfig.java
@@ -126,7 +126,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
 
-/** Reads config/test.properties; resolves secrets from the environment or .tools/secrets.env. */
+/** Reads config/test.properties; resolves secrets from the environment or ai/.install/secrets.env. */
 public final class TestConfig {
 
     private static final Properties PROPS = load();
@@ -157,7 +157,7 @@ public final class TestConfig {
         if (fromEnv != null && !fromEnv.isBlank()) {
             return fromEnv;
         }
-        Path secretsFile = Path.of(".tools", "secrets.env");
+        Path secretsFile = Path.of("ai", ".install", "secrets.env");
         try {
             for (String line : Files.readAllLines(secretsFile)) {
                 String trimmed = line.trim();

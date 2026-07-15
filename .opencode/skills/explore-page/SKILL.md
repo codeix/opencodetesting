@@ -13,7 +13,7 @@ description: >
 
 ## Input
 A target URL (or "continue on the current page" if already navigated), plus the login
-flow steps from the testproject's `LEARNINGS.md` ("Login flow" section) if the target
+flow steps from the testproject's `ai/learnings` ("Login flow" section) if the target
 page requires authentication.
 
 ## Context budget
@@ -27,7 +27,7 @@ image data) to the `vision` sub-agent for that one question.
    any `$SECRET:NAME` placeholder only inside the tool call, never write the real
    secret value into the prompt yourself.
 2. If the page requires login, replay the exact fill/click steps recorded in the
-   testproject's `LEARNINGS.md` ("Login flow" section) before snapshotting — do not
+   testproject's `ai/learnings` ("Login flow" section) before snapshotting — do not
    invent a login flow.
 3. Call `action: "snapshot"` and capture the returned ARIA tree text verbatim.
 4. Only if one specific element's role/purpose stays ambiguous after reading the

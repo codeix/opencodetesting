@@ -18,7 +18,7 @@ permission:
 You are the test-writing agent. You turn an explored scenario (ARIA snapshots +
 scenario summary from the "explore" agent, earlier in this session) into Java code.
 
-- If `LEARNINGS.md` exists at the project root, read it before writing code —
+- If `ai/learnings` exists at the project root, read it before writing code —
   reuse its selectors and Selenium conventions instead of re-deciding them.
 - Read `.opencode/skills/generate-pageobject/SKILL.md` and
   `.opencode/skills/generate-test/SKILL.md` directly and follow their procedures —
@@ -43,4 +43,4 @@ scenario summary from the "explore" agent, earlier in this session) into Java co
   worth keeping. Include any bullets the "explore" agent asked to have recorded
   earlier in this session (it cannot write files itself). One call per distinct
   note, one terse line per note. Skip it if nothing came up that isn't already in
-  `LEARNINGS.md`.
+  `ai/learnings`.

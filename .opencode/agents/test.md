@@ -19,7 +19,7 @@ invoke it via the `skill` tool, which is unreliable with this local model (annou
 intent, never completes, then repeats the announcement next turn instead of
 progressing).
 
-If `LEARNINGS.md` exists at the project root, read it before diagnosing a failure —
+If `ai/learnings` exists at the project root, read it before diagnosing a failure —
 a past fix for the same flaky selector or environment quirk may already be recorded.
 
 - First `mvn -q test-compile`. Only when that is clean, run the test:
@@ -40,4 +40,4 @@ a past fix for the same flaky selector or environment quirk may already be recor
 - Before finishing, hand anything reusable to the `learnings` subagent — a fix for a
   recurring failure, an environment quirk, a decision about how to handle a flaky
   selector. One call per distinct note, one terse line per note. Skip it if nothing
-  came up that isn't already in `LEARNINGS.md`.
+  came up that isn't already in `ai/learnings`.

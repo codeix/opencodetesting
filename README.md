@@ -21,13 +21,16 @@ finished tests run on their own with plain Selenium, no AI needed.
 
 - Create `config/test.properties` with the base URL and test username (never the
   password — see `.gitignore`).
-- Create `.tools/secrets.env` (gitignored, `chmod 600`) with the test password, e.g.
-  `TEST_PASSWORD=...` — never committed, never shown to the AI.
-- Install Playwright's browser once, project-locally (npm dependencies are installed
-  automatically by opencode itself, see `.opencode/package.json`):
+- Create `ai/.install/secrets.env` (gitignored, `chmod 600`) with the test password,
+  e.g. `TEST_PASSWORD=...` — never committed, never shown to the AI.
+- Point Playwright's browser install at `ai/.install/playwright` (project-local, not
+  `~/.cache` and not inside the shared `.opencode` clone) and install it once. npm
+  dependencies themselves are installed automatically by opencode, see
+  `.opencode/package.json`:
 
 ```bash
-cd .opencode && PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install chromium
+export PLAYWRIGHT_BROWSERS_PATH="$PWD/ai/.install/playwright"  # add to your shell profile or .envrc — must stay set for daily use too
+cd .opencode && npx playwright install chromium
 ```
 
 ## Daily use
@@ -65,9 +68,9 @@ reports the error to you.
 
 ## Shared knowledge across sessions
 
-The agents keep a `LEARNINGS.md` file at your project root — decisions, navigation
-notes, the login flow, tricky selectors, and Selenium conventions specific to your
-app, so the same thing doesn't get re-discovered every session. It's created automatically the first
+The agents keep an `ai/learnings` file — decisions, navigation notes, the login
+flow, tricky selectors, and Selenium conventions specific to your app, so the same
+thing doesn't get re-discovered every session. It's created automatically the first
 time an agent has something to record; commit it like any other project file and
 read it yourself any time you want to see what the agents have learned so far.
 
@@ -79,10 +82,11 @@ Tell the agent your login flow **once**, interactively:
 > $SECRET:TEST_PASSWORD, click the submit button."
 
 Then have it record those steps in the "Login flow" section of your project's
-`LEARNINGS.md` (see "Shared knowledge across sessions" above), so every future run
+`ai/learnings` (see "Shared knowledge across sessions" above), so every future run
 replays them automatically. They stay in *your* project — never in the shared
 `AGENTS.md`, which other testprojects reuse. Always write `$SECRET:TEST_PASSWORD` —
-never the real password. The tool resolves it from `.tools/secrets.env` on its own.
+never the real password. The tool resolves it from `ai/.install/secrets.env` on its
+own.
 
 ## Running the generated tests
 
@@ -92,8 +96,8 @@ mvn test -Dgroups=typography-check              # occasional typography checks
 ```
 
 Configuration (base URL, username) lives in `config/test.properties`. The password
-comes from the `TEST_PASSWORD` environment variable or `.tools/secrets.env` — it is
-never in a `.java` file or in git.
+comes from the `TEST_PASSWORD` environment variable or `ai/.install/secrets.env` — it
+is never in a `.java` file or in git.
 
 On a machine with no system Chrome install (CI runners, sandboxed dev containers),
 point `BaseTest` at any Chrome/Chromium binary instead:
@@ -125,6 +129,11 @@ reference it:
 
 One `git pull` in the shared clone then updates every project that references
 it — no vendoring, no manual re-copying.
+
+Everything that's testproject-local (never symlinked, never shared) lives under one
+`ai/` folder instead of scattered dotfiles: `ai/learnings` (committed), `ai/scenario/`
+(committed, one file per `/new-test` run), and `ai/.install/` (gitignored — secrets,
+Playwright's project-local browser install, codegen recordings).
 
 **Fastest way to set this up:** in the other project, open `opencode` and
 paste in the raw link to [`INSTALL.md`](INSTALL.md)

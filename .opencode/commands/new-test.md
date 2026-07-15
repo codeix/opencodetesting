@@ -5,7 +5,7 @@ agent: build
 
 Run the full "new test" skill chain autonomously for the request below, without asking
 for confirmation between steps (only stop early if genuinely blocked, e.g. login
-required but no flow is recorded in LEARNINGS.md):
+required but no flow is recorded in ai/learnings):
 
 1. **explore-page** — navigate to the target URL and capture its ARIA snapshot. Only
    take a cropped screenshot if a specific element is genuinely ambiguous from the
@@ -18,6 +18,11 @@ required but no flow is recorded in LEARNINGS.md):
 4. **validate-test** — compile/run the result. On failure, apply one targeted fix via
    `generate-test` and retry — up to 3 attempts total — then stop and report the error
    instead of looping forever.
+
+Once the test compiles, save the target URL and scenario verbatim to
+`ai/scenario/<test-class-name>.md` (create `ai/scenario/` if it doesn't exist) — a
+one-line record of what generated this test, so it's reproducible/editable later.
+Don't save it if validation never succeeded.
 
 Target URL: $1
 

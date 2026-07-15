@@ -10,7 +10,7 @@ let page: Page | undefined
 
 const SECRET_PLACEHOLDER = /^\$SECRET:(.+)$/
 
-// Resolves a "$SECRET:NAME" placeholder from .tools/secrets.env. The AI only ever
+// Resolves a "$SECRET:NAME" placeholder from ai/.install/secrets.env. The AI only ever
 // sees the placeholder in its own tool call; the real value never enters the prompt
 // or the tool's return value. See docs/PLAN.md section 5.3.
 function resolveValue(value: string, projectDirectory: string): string {
@@ -18,7 +18,7 @@ function resolveValue(value: string, projectDirectory: string): string {
   if (!match) return value
 
   const name = match[1]
-  const secretsPath = join(projectDirectory, ".tools", "secrets.env")
+  const secretsPath = join(projectDirectory, "ai", ".install", "secrets.env")
   let contents: string
   try {
     contents = readFileSync(secretsPath, "utf-8")
@@ -53,7 +53,7 @@ export default tool({
     "capture a compact ARIA snapshot as text (snapshot), take a cropped screenshot saved to disk (screenshot " +
     "— returns only the file path, never inline image data), click an element (click), fill a form field " +
     "(fill), or run arbitrary JavaScript in the page context (evaluate). The fill value may be the placeholder " +
-    "\"$SECRET:NAME\" instead of a real secret — it is resolved from .tools/secrets.env inside this tool and " +
+    "\"$SECRET:NAME\" instead of a real secret — it is resolved from ai/.install/secrets.env inside this tool and " +
     "never appears in the prompt or the tool's return value. Browser/page are a singleton and persist across " +
     "calls in the same session, so a login flow only needs to run once. Always prefer 'snapshot' text over " +
     "'screenshot' — only screenshot, and only a cropped region, when the ARIA snapshot leaves a specific " +
@@ -96,7 +96,7 @@ export default tool({
       }
 
       case "screenshot": {
-        const dir = join(context.directory, ".tools", "screenshots")
+        const dir = join(context.directory, "ai", ".install", "screenshots")
         mkdirSync(dir, { recursive: true })
         const file = join(dir, `screenshot-${Date.now()}.png`)
         await p.screenshot({ path: file, clip: args.clip })

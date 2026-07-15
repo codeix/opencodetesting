@@ -38,42 +38,62 @@ the later implementation phase — not now.
 
 ## 2. Folder Structure
 
+### 2.1 This repo (the shared framework)
+
 ```
-project/
-├── .tools/                            # LOCAL ONLY, gitignored: secrets.env (model provider runs separately!)
-├── .gitignore                        # must include .tools/ and *.env
+opencodetesting/
 ├── opencode.json                     # opencode defaults (disabled agents, permissions, MCP servers if used) — no provider block; the local provider is configured in opencode's system settings
 ├── AGENTS.md                         # project rules, conventions, reference to PLAN.md
+├── README.md / INSTALL.md
 ├── docs/
 │   └── PLAN.md                       # this document
-├── .opencode/
-│   ├── package.json                  # npm dependency "playwright" for the custom tool
-│   ├── skills/
-│   │   ├── component-knowledge/SKILL.md
-│   │   ├── explore-page/SKILL.md
-│   │   ├── generate-pageobject/SKILL.md
-│   │   ├── generate-test/SKILL.md
-│   │   ├── validate-test/SKILL.md
-│   │   ├── edit-test/SKILL.md
-│   │   ├── check-typography/SKILL.md
-│   │   └── setup-java-skeleton/SKILL.md   # one-time: pom.xml, TestConfig, BaseTest, folders (verbatim templates)
-│   ├── tools/
-│   │   └── playwright-explore.ts     # custom tool: drives the browser, returns ARIA snapshot + screenshot path
-│   ├── agents/
-│   │   ├── vision.md                 # sub-agent that uses the configured local model (only for screenshots)
-│   │   ├── explore.md                # primary agent, phase 1: browser exploration (read-only)
-│   │   ├── selenium.md               # primary agent, phase 2: write page objects + tests (no browser/shell)
-│   │   ├── test.md                   # primary agent, phase 3: mvn run + auto-fix (max 3 attempts)
-│   │   └── inspector.md              # primary agent: Playwright codegen recording + translation
-│   └── commands/
-│       ├── new-test.md               # /new-test <url> <scenario>
-│       └── edit-test.md              # /edit-test <test-file> <change>
-├── src/test/java/
-│   ├── pages/                        # generated page objects
-│   └── tests/                        # generated test classes
-├── config/
-│   └── test.properties               # base URL, test user, environments (never hardcoded!)
-└── pom.xml                           # Maven skeleton: Selenium, JUnit, WebDriverManager
+├── references/
+│   ├── oblique-components.md
+│   └── design-tokens.md
+└── .opencode/
+    ├── package.json                  # npm dependency "playwright" for the custom tool
+    ├── skills/
+    │   ├── component-knowledge/SKILL.md
+    │   ├── explore-page/SKILL.md
+    │   ├── generate-pageobject/SKILL.md
+    │   ├── generate-test/SKILL.md
+    │   ├── validate-test/SKILL.md
+    │   ├── edit-test/SKILL.md
+    │   ├── check-typography/SKILL.md
+    │   └── setup-java-skeleton/SKILL.md   # one-time: pom.xml, TestConfig, BaseTest, folders (verbatim templates)
+    ├── tools/
+    │   └── playwright-explore.ts     # custom tool: drives the browser, returns ARIA snapshot + screenshot path
+    ├── agents/
+    │   ├── vision.md                 # sub-agent that uses the configured local model (only for screenshots)
+    │   ├── learnings.md               # sub-agent that maintains ai/learnings for a testproject
+    │   ├── explore.md                # primary agent, phase 1: browser exploration (read-only)
+    │   ├── selenium.md                # primary agent, phase 2: write page objects + tests (no browser/shell)
+    │   ├── test.md                   # primary agent, phase 3: mvn run + auto-fix (max 3 attempts)
+    │   └── inspector.md              # primary agent: Playwright codegen recording + translation
+    └── commands/
+        ├── new-test.md               # /new-test <url> <scenario>
+        └── edit-test.md              # /edit-test <test-file> <change>
+```
+
+### 2.2 A testautomation project that consumes it
+
+Only two symlinks and one `ai/` folder are imposed on a testproject — everything else
+(`config/`, `src/test/java/`, `pom.xml`/Maven, or their equivalents in another stack) is
+that project's own layout and is out of scope here (see `INSTALL.md` for how the
+symlinks get created):
+
+```
+<testproject>/
+├── .opencode -> <path>/opencodetesting/.opencode   # symlink; opencode discovers agents/skills/tools/commands here — must stay at the project root
+├── .opencodetesting -> <path>/opencodetesting       # symlink to the whole shared clone; gives access to AGENTS.md/docs/references by path
+├── ai/
+│   ├── .gitignore                    # ignores .install/ only — learnings and scenario/ ARE committed
+│   ├── learnings                     # testproject-specific knowledge (was LEARNINGS.md at root) — committed
+│   ├── scenario/                     # one file per /new-test scenario, for reproducibility — committed
+│   └── .install/                     # LOCAL ONLY, gitignored
+│       ├── secrets.env               # test password etc., chmod 600 (see section 5)
+│       └── playwright/               # PLAYWRIGHT_BROWSERS_PATH target — browser binaries, project-local
+└── ...                                # the project's own structure (e.g. config/test.properties, src/test/java/, pom.xml)
 ```
 
 ---
@@ -245,12 +265,12 @@ value happens outside the prompt, in code that already has filesystem access any
 
 ### 5.2 Where the Password Actually Lives
 
-- New, **non-versioned** file: `.tools/secrets.env`, gitignored.
+- New, **non-versioned** file: `ai/.install/secrets.env` (see section 2.2), gitignored.
 - Created manually by the developer, with restrictive file permissions (`chmod 600`)
   — **not** into `config/test.properties` (which stays commit-friendly, without
   secrets).
-- The project root `.gitignore` must include `.tools/` (and explicitly `*.env` too), so
-  nothing gets checked in even by accidental copying.
+- `ai/.gitignore` must include `.install/`, so nothing gets checked in even by
+  accidental copying.
 
 ### 5.3 Placeholder Convention (draft)
 
@@ -259,8 +279,8 @@ value happens outside the prompt, in code that already has filesystem access any
   `fill(passwordField, "$SECRET:TEST_PASSWORD")`.
 - Both the custom tool (at generation time) and `TestConfig` in Java (at runtime)
   recognize the same naming scheme (`TEST_PASSWORD`) and resolve it from their
-  respective local source (`.tools/secrets.env` or an environment variable/its own
-  properties file for the CI/runtime environment).
+  respective local source (`ai/.install/secrets.env` or an environment variable/its
+  own properties file for the CI/runtime environment).
 - Tool output (the return value of `fill`) never returns the resolved value (e.g. just
   `"filled"`), so the password can't reappear in the context via a detour through the
   tool response either.
@@ -268,8 +288,9 @@ value happens outside the prompt, in code that already has filesystem access any
 ### 5.4 Open Items
 - [ ] Define the exact syntax of the placeholder convention (currently only a draft:
       `$SECRET:NAME`)
-- [ ] How does `.tools/secrets.env` get populated in a CI environment (no interactive
-      setup step exists) — presumably via the CI's own secret variables, still open
+- [ ] How does `ai/.install/secrets.env` get populated in a CI environment (no
+      interactive setup step exists) — presumably via the CI's own secret variables,
+      still open
 - [ ] Check/decide: should `validate-test` (section 4) automatically check for
       accidentally hardcoded passwords in generated Java code (a simple grep as an
       extra safety net)?
@@ -393,7 +414,19 @@ fixed expected values (e.g. as constants or in `config/test.properties`), no cal
       secrets, Playwright browsers) is now done manually — see README.md "One-time
       setup" and section 5.2. The model provider was already configured entirely
       separately, in opencode's system settings, unaffected by this removal.
-- [x] `.gitignore` created (`.tools/`, `*.env`) — see section 5.2
+- [x] Consolidated all testproject-local data under one `ai/` folder (see section
+      2.2) instead of scattering it across the project root: `LEARNINGS.md` moved to
+      `ai/learnings`, `.tools/secrets.env` moved to `ai/.install/secrets.env`,
+      Playwright's browser install moved to `ai/.install/playwright` (genuinely
+      project-local now, via `PLAYWRIGHT_BROWSERS_PATH` — previously it installed
+      inside `.opencode/node_modules`, i.e. physically inside the shared symlinked
+      clone, shared by every testproject using it), and codegen recordings moved to
+      `ai/.install/recordings/`. New: `ai/scenario/`, one file per `/new-test` run,
+      for reproducibility. The `.opencode`/`.opencodetesting` symlinks stay at the
+      project root, unaffected — `opencode` only discovers `.opencode/` there.
+- [x] `.gitignore` created — testproject's `ai/.gitignore` covers `.install/`; this
+      shared repo's own `.gitignore` covers `*.env` and, as a safety net, `/ai/` in
+      case it's ever accidentally created here — see section 5.2
 - [ ] Finalize the placeholder convention `$SECRET:NAME` (section 5.3) — not yet
       implemented in the custom tool (`playwright-explore.ts`), only specified
 - [x] Model connection corrected: the earlier "Devstral"/"Ministral-3:3b" names were
@@ -413,7 +446,7 @@ fixed expected values (e.g. as constants or in `config/test.properties`), no cal
       by decision (2026-07-07) this is the agent's own job. A new skill
       `.opencode/skills/setup-java-skeleton/SKILL.md` contains the complete verbatim
       templates (pom.xml with Selenium 4 + JUnit 5 + WebDriverManager, TestConfig with
-      env/`.tools/secrets.env` secret resolution, BaseTest) and is run once per project
+      env/`ai/.install/secrets.env` secret resolution, BaseTest) and is run once per project
       before the first generation, or when `validate-test` finds them missing.
 - [x] Wrote all skill files, including `explore-page` and `check-typography` (see
       section 9) — see `.opencode/skills/`.
