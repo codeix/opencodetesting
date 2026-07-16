@@ -554,6 +554,21 @@ fixed expected values (e.g. as constants or in `config/test.properties`), no cal
       /opencode.json` loaded via the `OPENCODE_CONFIG` env var, but both were
       judged more complexity than the win was worth. If that capability is
       wanted later, it needs its own decision, not a default in this flow.
+- [x] Fixed `inspector` never actually opening the codegen browser: it was
+      launching `playwright codegen` as a normal foreground bash command, but
+      that command blocks until the developer closes its browser window — an
+      unbounded wait for human interaction, not a quick call — so the turn just
+      hung with no visible result. Same class of problem as the `learnings`
+      background-call saga earlier in this list, but the opposite fix: that one
+      was resolved by *removing* backgrounding (a subagent call is quick enough
+      to be synchronous); codegen genuinely can't be synchronous, so it now runs
+      detached (`nohup ... &` + `disown`, logging to
+      `ai/.install/recordings/<name>.codegen.log`) and `inspector` waits for the
+      developer to say they're done before reading the output file, checking the
+      log if it's missing/empty instead of retrying blindly. Also now creates
+      `ai/.install/recordings/` first (it may not exist yet on first use) and
+      sets `PLAYWRIGHT_BROWSERS_PATH` inline rather than relying on it being
+      inherited from the shell.
 - [x] `.gitignore` created — testproject's `ai/.gitignore` covers `.install/`; this
       shared repo's own `.gitignore` covers `*.env` and, as a safety net, `/ai/` in
       case it's ever accidentally created here — see section 5.2

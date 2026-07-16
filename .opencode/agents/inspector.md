@@ -22,14 +22,30 @@ You are the inspector agent. The developer records; you interpret.
 - If `ai/learnings` exists at the project root, read it before translating a
   recording — a navigation path or selector you're about to write down may already
   be recorded there.
-- Start a recording with:
-  `cd .opencode && npx playwright codegen <url> --output ../ai/.install/recordings/<name>.ts`
-  The command blocks until the developer closes the codegen browser — tell them to
-  click through the flow and close the window when done, then read the output file.
-  A recording can be a full scenario, or just one click on a single element the
-  developer wants to point out — for a one-element session, tell them to click only
-  that element (no need to fill in surrounding steps) and close the browser right
-  after.
+- **Start a recording in the background — never as a normal foreground command.**
+  `playwright codegen` blocks until the developer closes its browser window, which
+  can take any amount of time (they're clicking through the app themselves); a
+  foreground call just hangs the turn waiting on that. Run it detached instead:
+  ```bash
+  mkdir -p ai/.install/recordings
+  PLAYWRIGHT_BROWSERS_PATH="$PWD/ai/.install/playwright" \
+    nohup .opencode/node_modules/.bin/playwright codegen <url> \
+    --output "$PWD/ai/.install/recordings/<name>.ts" \
+    > "ai/.install/recordings/<name>.codegen.log" 2>&1 &
+  disown
+  ```
+  This returns immediately — don't wait on it. Tell the developer the recording
+  browser should now be open: have them click through the flow (or just one
+  element, for a pointing session) and close the window, then tell you when
+  they're done. Only then read the output `.ts` file.
+  - If the file is missing or empty once they say they're done, check
+    `ai/.install/recordings/<name>.codegen.log` for why (e.g. no display, no
+    Chromium at `PLAYWRIGHT_BROWSERS_PATH`) and report the specific error instead
+    of silently retrying.
+  - A recording can be a full scenario, or just one click on a single element the
+    developer wants to point out — for a one-element session, tell them to click
+    only that element (no need to fill in surrounding steps) and close the
+    browser right after.
 - This codegen browser is a SEPARATE process from the `playwright-explore` browser:
   it shares no login state with an exploration session and nothing recorded here has
   happened in that browser.
