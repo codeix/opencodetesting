@@ -123,14 +123,19 @@ with no way to push updates back. Instead, keep a single clone of
 reference it:
 
 - **Agents/commands/skills** (`.opencode/`): point opencode at the shared clone
-  with the `OPENCODE_CONFIG_DIR` environment variable (or use
-  `~/.config/opencode/` if you want it active for every project on the
-  machine, not just one). opencode searches that directory for `agents/`,
-  `commands/`, `skills/`, `plugins/` exactly like a project-local `.opencode/`.
+  with the `OPENCODE_CONFIG_DIR` environment variable, project-scoped (or use
+  `~/.config/opencode/` yourself, deliberately, if you want it active for every
+  project on the machine — not something INSTALL.md's flow does automatically).
+  opencode searches that directory for `agents/`, `commands/`, `skills/`,
+  `plugins/` exactly like a project-local `.opencode/`.
 - **`AGENTS.md` / `docs/` / `references/`**: allowlist the shared clone's
-  absolute path via `permission.external_directory` in the project's
-  `opencode.json` (see the entries already in this repo's `opencode.json`),
-  then reference the shared files by path from the project's own `AGENTS.md`.
+  absolute path via `permission.external_directory` — in a project-local,
+  gitignored `ai/.install/opencode.json` loaded via the `OPENCODE_CONFIG` env
+  var (personal/gitignored wiring), or in the project's own committed
+  `opencode.json` (committed/shared wiring; see the entries already in this
+  repo's `opencode.json`) — then reference the shared files by path from the
+  project's own `AGENTS.md`. Never the global `~/.config/opencode/opencode.json`
+  for this — see `INSTALL.md` step 5.
 
 One `git pull` in the shared clone then updates every project that references
 it — no vendoring, no manual re-copying.
