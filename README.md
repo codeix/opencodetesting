@@ -47,7 +47,7 @@ already discussed) carries over:
 | Agent | Phase |
 |---|---|
 | `explore` | Interactively build a numbered test scenario with you, one step at a time |
-| `selenium` | Write the page objects and JUnit test from the finalized scenario |
+| `selenium` | Write or edit page objects/tests from the finalized scenario — reads the existing code first, proposes a plan, asks if unclear |
 | `test` | Compile/run with Maven, auto-fix failures (stops after 3 attempts) |
 | `inspector` | You record a flow in Playwright codegen; the AI translates it |
 | `build` | Everything else: skeleton setup, git, housekeeping |
@@ -60,11 +60,13 @@ Then just talk to it. Typical requests:
 | Build a new scenario | To "explore": "let's work on search_form. Open https://myapp.local/orders" — it asks what to do next, one step at a time, and saves each confirmed step to `ai/scenario/search_form.md` |
 | Resume a scenario | To "explore": "we want to work on search_form, open the browser and play all steps until step 5" — it replays steps 1-5 live, then continues from there |
 | Edit a scenario step | To "explore": "on search_form, change step 3 to click the Export button instead" |
-| Change a test | `/edit-test src/test/java/tests/OrderTest.java "also assert the success toast"` |
+| Change a test | To "selenium": "also assert the success toast on OrderTest" — it looks at the existing code, proposes what it'll change, then applies it once you agree |
 | Typography check | "Add a typography check for the orders page" |
 
-Once a scenario is finalized, press Tab to "selenium" — it reads `ai/scenario/<name>.md`
-and writes the page object + JUnit test from it, then Tab to "test" to compile-check
+Once a scenario is finalized (or a change request is clear), press Tab to
+"selenium" — it reads `ai/scenario/<name>.md`, checks what already exists in
+`src/test/java/`, proposes a plan (reuse/extend vs. new page object/test method),
+and writes or edits the code once you approve. Then Tab to "test" to compile-check
 with Maven (retries up to 3 times on failure, then reports the error).
 
 ## Shared knowledge across sessions

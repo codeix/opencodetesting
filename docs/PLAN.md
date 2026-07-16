@@ -63,17 +63,18 @@ opencodetesting/
     │   └── setup-java-skeleton/SKILL.md   # one-time: pom.xml, TestConfig, BaseTest, folders (verbatim templates)
     ├── tools/
     │   └── playwright-explore.ts     # custom tool: drives the browser, returns ARIA snapshot + screenshot path
-    ├── agents/
-    │   ├── vision.md                 # sub-agent that uses the configured local model (only for screenshots)
-    │   ├── learnings.md               # sub-agent that maintains ai/learnings for a testproject
-    │   ├── scenario.md                # sub-agent that maintains ai/scenario/<name>.md for a testproject
-    │   ├── explore.md                # primary agent, phase 1: interactive scenario building (read-only)
-    │   ├── selenium.md                # primary agent, phase 2: write page objects + tests (no browser/shell)
-    │   ├── test.md                   # primary agent, phase 3: mvn run + auto-fix (max 3 attempts)
-    │   └── inspector.md              # primary agent: Playwright codegen recording + translation
-    └── commands/
-        └── edit-test.md              # /edit-test <test-file> <change>
+    └── agents/
+        ├── vision.md                 # sub-agent that uses the configured local model (only for screenshots)
+        ├── learnings.md               # sub-agent that maintains ai/learnings for a testproject
+        ├── scenario.md                # sub-agent that maintains ai/scenario/<name>.md for a testproject
+        ├── explore.md                # primary agent, phase 1: interactive scenario building (read-only)
+        ├── selenium.md                # primary agent, phase 2: write/edit page objects + tests, interactively (no browser/shell)
+        ├── test.md                   # primary agent, phase 3: mvn run + auto-fix (max 3 attempts)
+        └── inspector.md              # primary agent: Playwright codegen recording + translation
 ```
+No `commands/` anymore — both `/new-test` and `/edit-test` were removed once `explore`
+and `selenium` became interactive (see sections 4.4 and 4.5); there is no
+slash-command shortcut left in this framework.
 
 ### 2.2 A testautomation project that consumes it
 
@@ -89,7 +90,7 @@ symlinks get created):
 ├── ai/
 │   ├── .gitignore                    # ignores .install/ only — learnings and scenario/ ARE committed
 │   ├── learnings                     # testproject-specific knowledge (was LEARNINGS.md at root) — committed
-│   ├── scenario/                     # one numbered, editable file per named scenario (see section 4.3) — committed
+│   ├── scenario/                     # one numbered, editable file per named scenario (see section 4.4) — committed
 │   └── .install/                     # LOCAL ONLY, gitignored
 │       ├── secrets.env               # test password etc., chmod 600 (see section 5)
 │       └── playwright/               # PLAYWRIGHT_BROWSERS_PATH target — browser binaries, project-local
@@ -158,10 +159,14 @@ Every SKILL.md must contain these four sections, in this order:
 
 **Iteration planning:** Step 1 (`explore-page`) is driven **interactively** by the
 developer through the "explore" agent — one confirmed step at a time, not run
-automatically (see section 4.4). Once the developer finalizes a scenario, steps 2→3→4
-chain automatically: "selenium" writes the page object + test, then "test" runs
-`validate-test`. On validation failures it jumps back to step 3 (max. 3 attempts), then
-aborts with an error report to the developer instead of looping forever.
+automatically (see section 4.4). Once the developer finalizes a scenario, "selenium"
+is itself interactive too (see section 4.5): it analyzes the existing code, proposes
+a plan (steps 2/5, whichever fits — new page object/test vs. a targeted edit to an
+existing one), and only proceeds once the developer approves it or the plan is
+unambiguous. Once code is written, "test" runs step 4 (`validate-test`). On
+validation failures it jumps back to whichever skill produced the failing file (max.
+3 attempts), then aborts with an error report to the developer instead of looping
+forever.
 
 ### 4.1 Special case: `component-knowledge` as a pre-prepared knowledge skill
 
@@ -277,6 +282,38 @@ incompatible with wanting the developer to be asked, one step at a time.
   needed for reading — it already has file access) as the authoritative, ordered step
   list for `generate-pageobject`/`generate-test`.
 
+### 4.5 Interactive Selenium: Analyze, Plan, Propose
+
+**Decision (2026-07-16):** `selenium` doesn't autonomously turn a scenario into code
+either — it reads the existing project first, builds a plan, and proposes it to the
+developer before writing anything. This replaced the earlier standalone `/edit-test
+<file> <change>` command, for the same reason `/new-test` was replaced: a fixed,
+non-interactive command is incompatible with wanting the developer in the loop. There
+is no slash-command shortcut for either case anymore — new tests and edits to
+existing ones both go through the same interactive `selenium` conversation.
+
+- **Analyze first.** Before deciding anything, `selenium` reads what's already in
+  `src/test/java/pages/` and `src/test/java/tests/` — existing page objects for the
+  same page/route, existing test classes for the same feature, the naming/style
+  conventions already established in the project. It never assumes a class doesn't
+  exist without checking, and never proposes one that duplicates one already there.
+- **Plan, then propose.** `selenium` decides: reuse/extend an existing page object
+  (add a method or two) vs. a genuinely new class; add a method to an existing test
+  class vs. a genuinely new file. It states that plan — which files, reuse vs.
+  create, what methods/assertions — and waits for the developer's go-ahead before
+  writing, unless the developer has already made clear they want it to just proceed.
+- **Ask when unclear.** A selector missing from the session's snapshots, a scenario
+  step that doesn't map onto an existing page object method, an existing convention
+  that conflicts with the scenario — `selenium` says exactly what's unclear rather
+  than guessing.
+- **Prefer extending over duplicating.** The Page Object pattern stays the default;
+  `generate-pageobject` and `generate-test` both start their procedure with "check
+  for an existing one first" (see sections above). One unified path handles both
+  "new test" and "edit existing test": if the plan calls for a targeted change to
+  code that already exists, `selenium` uses `edit-test` (excerpt-only, minimal
+  change, preserves signatures other tests rely on) instead of
+  `generate-pageobject`/`generate-test`.
+
 ---
 
 ## 5. Secrets Handling
@@ -386,9 +423,13 @@ not hardcoded per project. See `opencode.json` in the repo root.
 ## 8. Editing Existing Tests
 
 - No custom versioning format — every generation/edit is a Git commit.
-- `edit-test` only gets the affected excerpt (method/class), not the whole repo, to
-  keep the context small.
-- Before every edit: run `validate-test` again, so errors don't slip in unnoticed.
+- Editing goes through the same interactive `selenium` conversation as writing a new
+  test (see section 4.5) — there is no separate `/edit-test` command anymore.
+  `selenium` reads the existing code, proposes its plan, then applies it via
+  `edit-test`, which only gets the affected excerpt (method/class), not the whole
+  file, to keep the context small.
+- Before every edit counts as done: run `validate-test` again, so errors don't slip
+  in unnoticed.
 
 ---
 
@@ -469,6 +510,17 @@ fixed expected values (e.g. as constants or in `config/test.properties`), no cal
       replacement, scenario building now happens entirely through conversation with
       `explore`. `selenium` now reads `ai/scenario/<name>.md` directly as its
       authoritative input instead of a chat-only scenario summary.
+- [x] Redesigned `selenium` the same way: it analyzes the existing project code
+      (`src/test/java/pages/`, `src/test/java/tests/`) before deciding anything, then
+      proposes a plan (reuse/extend vs. new page object/test method) and asks when
+      something's unclear, instead of silently generating files (see section 4.5).
+      `generate-pageobject`/`generate-test` now both start with "check for an
+      existing one first." Removed the standalone `/edit-test <file> <change>`
+      command for the same reason `/new-test` was removed — non-interactive,
+      incompatible with the new model. No slash-command replacement; `.opencode/`
+      has no `commands/` left. The `edit-test` *skill* still exists, now called by
+      `selenium` once its plan is approved, for the "targeted change to existing
+      code" case specifically.
 - [x] `.gitignore` created — testproject's `ai/.gitignore` covers `.install/`; this
       shared repo's own `.gitignore` covers `*.env` and, as a safety net, `/ai/` in
       case it's ever accidentally created here — see section 5.2

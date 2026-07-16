@@ -18,8 +18,9 @@ They share one session, so each phase sees the previous phase's results:
 
 - `explore` — interactively build a numbered test scenario with the developer, one
   step at a time (read-only, no code). Never a one-shot autonomous exploration.
-- `selenium` — write page objects + tests from the finalized scenario (no browser,
-  no shell).
+- `selenium` — write or edit page objects + tests from the finalized scenario,
+  interactively: reads the existing code first, proposes a plan, asks if
+  something's unclear (no browser, no shell).
 - `test` — `mvn` compile/run, analyze failures, auto-fix (max 3 attempts, then report).
 - `inspector` — launch Playwright codegen so the developer records a flow themselves,
   then translate the recording (login flow → ai/learnings, scenario → explore verifies
@@ -117,11 +118,13 @@ a test does, separate from the chat that built it.
   compile anything.
 - Building a scenario is interactive, not chained: `explore` calls `explore-page` once
   per confirmed step, never all at once — see "Test scenarios" above.
-- Standard chain once a scenario is finalized: `component-knowledge` (as needed) →
-  `generate-pageobject` → `generate-test` → `validate-test`. On a validation failure,
-  loop back to `generate-test` (or `generate-pageobject` if the error is selector-
-  related) — max 3 attempts, then stop and report the error instead of looping.
-- Standard chain for "edit test": `edit-test` → `validate-test`.
+- `selenium` is also interactive, not autonomous: it reads the existing project code
+  and proposes a plan before writing anything — see the `selenium` agent definition.
+  Once its plan is approved: `component-knowledge` (as needed) →
+  `generate-pageobject`/`edit-test` (whichever fits — new page object/method vs.
+  targeted change to an existing one) → `generate-test`/`edit-test` → `validate-test`.
+  On a validation failure, loop back to whichever skill produced the failing file —
+  max 3 attempts, then stop and report the error instead of looping.
 - See `.opencode/skills/<name>/SKILL.md` for each skill's exact input/output contract.
 
 ## Java conventions
