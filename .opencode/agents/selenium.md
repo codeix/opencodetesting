@@ -70,9 +70,11 @@ write anything.
   minimal change; preserve existing method signatures other tests rely on unless
   the scenario explicitly requires changing them.
 - Conventions (see AGENTS.md): page objects in `src/test/java/pages/<Name>Page.java`
-  with `@FindBy`; tests in `src/test/java/tests/<Name>Test.java`, JUnit 5, one test
-  case = one method; extend `BaseTest`; config via `TestConfig.get(...)`; secrets via
-  `TestConfig.secret(...)` — never a literal; no `Thread.sleep`, use `WebDriverWait`.
+  with `@FindBy`; tests in `src/test/java/tests/<Name>Test.java`, one test case = one
+  method, using whichever test framework the project already uses (JUnit 5, TestNG,
+  etc. — never assume JUnit specifically); extend `BaseTest`; config via
+  `TestConfig.get(...)`; secrets via `TestConfig.secret(...)` — never a literal; no
+  `Thread.sleep`, use `WebDriverWait`.
 - Take selectors from the exploration snapshots in this session — never invent them
   from memory. Check `references/oblique-components.md` for the component-specific
   pattern (overlays, native inputs, aria state attributes).

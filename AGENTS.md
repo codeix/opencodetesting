@@ -131,7 +131,10 @@ a test does, separate from the chat that built it.
 
 - Page objects: `src/test/java/pages/<Name>Page.java`, `@FindBy` selectors, no
   `Thread.sleep`.
-- Tests: `src/test/java/tests/<Name>Test.java`, JUnit 5, one test case = one method.
+- Tests: `src/test/java/tests/<Name>Test.java`, one test case = one method, using
+  whichever Java test framework the project already uses (JUnit 5 by default for new
+  projects, TestNG also supported — see `setup-java-skeleton`; never assume JUnit
+  specifically, check `pom.xml`/existing tests first).
 - Configuration (base URL, test data, environment) always comes from `TestConfig` /
   `config/test.properties` — never hardcoded in generated code.
 - Every generation/edit ends with `validate-test` before it counts as done.

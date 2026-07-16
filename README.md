@@ -5,9 +5,11 @@ How to use this project as a developer. Architecture details: `docs/PLAN.md`.
 ## What it does
 
 You talk to an AI console (opencode). It opens a **visible Chromium browser**, looks
-at your running web app, and writes **Java/Selenium tests** (Page Object pattern,
-JUnit 5) into `src/test/java/`. The AI browser is only used while generating — the
-finished tests run on their own with plain Selenium, no AI needed.
+at your running web app, and writes **Java/Selenium tests** (Page Object pattern)
+into `src/test/java/`, using whichever Java test framework the project already uses
+(JUnit 5 by default for a new project, TestNG also supported). The AI browser is only
+used while generating — the finished tests run on their own with plain Selenium, no
+AI needed.
 
 ## Prerequisites
 

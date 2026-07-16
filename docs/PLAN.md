@@ -153,7 +153,7 @@ Every SKILL.md must contain these four sections, in this order:
 | 0 | `component-knowledge` | (no live input — static reference) | selector/structure knowledge about Angular Material & Oblique, as text | none (reference only) |
 | 1 | `explore-page` | URL / running session | DOM snapshot (text) + optional cropped screenshot | Playwright tool (no LLM) |
 | 2 | `generate-pageobject` | DOM snapshot + lookup in `component-knowledge` | Java page object class | `mistral-small-4-119b` |
-| 3 | `generate-test` | Page object class + test scenario | Java test class (JUnit) | `mistral-small-4-119b` |
+| 3 | `generate-test` | Page object class + test scenario | Java test class | `mistral-small-4-119b` |
 | 4 | `validate-test` | Test class + page object | `mvn test-compile`/run result, on error: error message | no LLM (only for a fix suggestion: `mistral-small-4-119b`) |
 | 5 | `edit-test` | existing file (excerpt) + change request | updated excerpt | `mistral-small-4-119b` |
 
@@ -413,7 +413,9 @@ not hardcoded per project. See `opencode.json` in the repo root.
 
 - Page objects: `src/test/java/pages/<Name>Page.java`, `@FindBy` selectors from the DOM
   snapshot, no hardcoded waits (`Thread.sleep`).
-- Tests: `src/test/java/tests/<Name>Test.java`, JUnit 5, one test case = one method.
+- Tests: `src/test/java/tests/<Name>Test.java`, one test case = one method, using
+  whichever Java test framework the project already uses (JUnit 5, TestNG, etc.) —
+  never assume JUnit specifically; check `pom.xml`/existing tests for the actual one.
 - Configuration (base URL, test data, environment) **always** comes from
   `config/test.properties`, never hardcoded in generated code.
 - Every generation ends with `validate-test` before it counts as "done".
@@ -462,7 +464,10 @@ fixed expected values (e.g. as constants or in `config/test.properties`), no cal
 
 ### 9.2 Trigger Mechanism for "Occasional"
 
-- Test methods get their own JUnit tag, e.g. `@Tag("typography-check")`.
+- Test methods get their own tag/group in whichever mechanism the project's test
+  framework provides, e.g. `@Tag("typography-check")` (JUnit 5) or
+  `@Test(groups = "typography-check")` (TestNG) — Maven Surefire's
+  `<groups>`/`<excludedGroups>` works the same way for both.
 - This tag does **not** run on every normal functional test pass, but instead:
   - either at a fixed sampling rate (e.g. only every nth run),
   - or as a separate, infrequently running job (e.g. nightly),
@@ -521,6 +526,18 @@ fixed expected values (e.g. as constants or in `config/test.properties`), no cal
       has no `commands/` left. The `edit-test` *skill* still exists, now called by
       `selenium` once its plan is approved, for the "targeted change to existing
       code" case specifically.
+- [x] Made the Java test framework a choice, not a hardcoded assumption: JUnit 5
+      remains the default for a fresh project, but TestNG is equally supported.
+      `setup-java-skeleton` now asks which framework to use when `pom.xml` doesn't
+      exist yet, or detects it from an existing `pom.xml`, and has a template
+      variant per framework (`pom.xml` dependency block, `BaseTest`'s
+      `@BeforeEach`/`@AfterEach` vs. `@BeforeMethod`/`@AfterMethod`) — never mixing
+      pieces of one framework's variant with another's in the same project.
+      `generate-test` and `check-typography` match whichever framework the
+      project's existing tests already use (annotation style, `@Tag` vs.
+      `@Test(groups=...)`) instead of assuming JUnit. `TestConfig` was already
+      framework-agnostic (plain Java, no test-framework import) and needed no
+      change.
 - [x] `.gitignore` created — testproject's `ai/.gitignore` covers `.install/`; this
       shared repo's own `.gitignore` covers `*.env` and, as a safety net, `/ai/` in
       case it's ever accidentally created here — see section 5.2
@@ -541,8 +558,8 @@ fixed expected values (e.g. as constants or in `config/test.properties`), no cal
       `.opencode/tools/playwright-explore.ts`, see section 4.2.
 - [x] `pom.xml` skeleton + `TestConfig`/`BaseTest` design: NOT pre-built into the repo —
       by decision (2026-07-07) this is the agent's own job. A new skill
-      `.opencode/skills/setup-java-skeleton/SKILL.md` contains the complete verbatim
-      templates (pom.xml with Selenium 4 + JUnit 5 + WebDriverManager, TestConfig with
+      `.opencode/skills/setup-java-skeleton/SKILL.md` contains the templates
+      (pom.xml with Selenium 4 + a test framework + WebDriverManager, TestConfig with
       env/`ai/.install/secrets.env` secret resolution, BaseTest) and is run once per project
       before the first generation, or when `validate-test` finds them missing.
 - [x] Wrote all skill files, including `explore-page` and `check-typography` (see

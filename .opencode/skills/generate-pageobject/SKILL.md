@@ -52,9 +52,10 @@ component). Target well under ~1500 tokens of input.
    `src/test/java/pages/<Name>Page.java`, `@FindBy`-annotated fields plus action
    methods only (no assertions here). No `Thread.sleep` — rely on Selenium's
    built-in waits. **Constructor takes `WebDriver driver` and stores it as a field —
-   never `extends BaseTest`.** `BaseTest` is a JUnit lifecycle class
-   (`@BeforeEach`/`@AfterEach`, owns the driver's lifecycle) that only test classes
-   extend; a page object that extends it is a category error even when it happens to
+   never `extends BaseTest`.** `BaseTest` is a test-framework lifecycle class
+   (`@BeforeEach`/`@AfterEach` for JUnit 5, `@BeforeMethod`/`@AfterMethod` for
+   TestNG — owns the driver's lifecycle either way) that only test classes extend;
+   a page object that extends it is a category error even when it happens to
    compile.
 5. Pull any configurable value (base URL, etc.) from `TestConfig` — never hardcode it.
 6. Keep new methods/fields scoped to this scenario's elements/actions; don't
