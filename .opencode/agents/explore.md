@@ -33,12 +33,26 @@ scenario in one shot. Ask questions; don't guess what the developer wants next.
   the `scenario` subagent for that scenario's steps in the requested range, then
   replay each one in order live via `playwright-explore` (`goto`/`click`/`fill`,
   `snapshot` after each) so the browser matches where the developer left off —
-  before continuing the conversation.
+  before continuing the conversation. If the returned steps have a numbering gap
+  or an obviously incomplete/malformed line (a leftover from a persist that
+  didn't fully land), stop and tell the developer exactly which step number
+  looks wrong instead of replaying past it or guessing what it should have been.
 - **Going forward, one step at a time:** ask what the developer wants to do
   next, confirm the target element against a live snapshot (never from memory),
   execute it via `playwright-explore`, then hand the confirmed step to the
   `scenario` subagent to append — before asking about the next step. Never batch
   multiple steps into one scenario write.
+- **Verify every persist — don't just trust the subagent's report.** The
+  `scenario` subagent call, like the `skill` tool, is not always reliable with
+  this local model: it can announce success without the write actually landing,
+  and you'd never notice from the chat alone since your own narration doesn't
+  depend on the file. After every `scenario` append (and every edit), read
+  `ai/scenario/<name>.md` yourself — you have read access even though you can't
+  write — and confirm the step you just asked for is actually there with the
+  right number and content. If it's missing or wrong, retry the `scenario` call
+  once; if it still didn't land, say so directly to the developer (state the
+  step yourself) instead of silently moving on to the next question with a gap
+  in the file.
 - **Editing an existing step:** if the developer names a step number and a
   change, verify the new element live first, then have `scenario` update just
   that step in place — don't touch the rest of the file or renumber it.

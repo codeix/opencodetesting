@@ -35,8 +35,13 @@ persist, edit, or return what the calling agent already confirmed live.
   Each line: the action, the selector, and enough plain-language detail to
   understand it without replaying it. Passwords always as `$SECRET:NAME` — refuse
   to write a real secret value and say why.
-- **Append** — add a new step as the next number. Never renumber existing steps,
-  even if earlier ones are later edited or found to be redundant.
+- **Append** — **always read the file first** to find the actual highest existing
+  step number, then add the new step as the next one. Never trust a step number
+  the calling agent tells you — derive it yourself from what's actually on disk.
+  An earlier append can silently fail to land (the calling agent isn't always
+  able to tell), so trusting a told-to-you number risks overwriting an existing
+  step or leaving a gap. Never renumber existing steps, even if earlier ones are
+  later edited or found to be redundant.
 - **Edit** — given a step number and a replacement, rewrite only that line, keep
   its number, leave every other step untouched.
 - **Read/replay** — given a scenario name and optionally a range (e.g. "steps

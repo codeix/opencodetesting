@@ -569,6 +569,20 @@ fixed expected values (e.g. as constants or in `config/test.properties`), no cal
       `ai/.install/recordings/` first (it may not exist yet on first use) and
       sets `PLAYWRIGHT_BROWSERS_PATH` inline rather than relying on it being
       inherited from the shell.
+- [x] Fixed `ai/scenario/<name>.md` ending up with gaps despite `explore`'s chat
+      narration looking complete: `explore` was never verifying that its
+      `scenario` append calls actually landed — the same "announces intent,
+      never completes" unreliability already documented for the `skill` tool
+      applies to subagent calls too, and explore's own narration doesn't depend
+      on the write succeeding, so a silent failure was invisible until someone
+      read the file. `explore` now reads `ai/scenario/<name>.md` back after
+      every append/edit to confirm it actually landed, retries once if not, and
+      tells the developer directly if it still didn't — instead of silently
+      moving on. `scenario` itself now always reads the file first to derive the
+      true next step number rather than trusting a number it's told, so one
+      earlier silent failure can't throw off every step number after it.
+      Resuming a scenario with a numbering gap or malformed line now stops and
+      flags it instead of replaying past it.
 - [x] `.gitignore` created — testproject's `ai/.gitignore` covers `.install/`; this
       shared repo's own `.gitignore` covers `*.env` and, as a safety net, `/ai/` in
       case it's ever accidentally created here — see section 5.2
