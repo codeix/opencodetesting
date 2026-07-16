@@ -120,22 +120,11 @@ Both are optional and unset by default — a normal system Chrome install needs 
 Don't copy this repo into each test-automation project — copies drift out of sync
 with no way to push updates back. Instead, keep a single clone of
 `opencodetesting` (e.g. `~/development/opencodetesting`) and have every project
-reference it:
-
-- **Agents/commands/skills** (`.opencode/`): point opencode at the shared clone
-  with the `OPENCODE_CONFIG_DIR` environment variable, project-scoped (or use
-  `~/.config/opencode/` yourself, deliberately, if you want it active for every
-  project on the machine — not something INSTALL.md's flow does automatically).
-  opencode searches that directory for `agents/`, `commands/`, `skills/`,
-  `plugins/` exactly like a project-local `.opencode/`.
-- **`AGENTS.md` / `docs/` / `references/`**: allowlist the shared clone's
-  absolute path via `permission.external_directory` — in a project-local,
-  gitignored `ai/.install/opencode.json` loaded via the `OPENCODE_CONFIG` env
-  var (personal/gitignored wiring), or in the project's own committed
-  `opencode.json` (committed/shared wiring; see the entries already in this
-  repo's `opencode.json`) — then reference the shared files by path from the
-  project's own `AGENTS.md`. Never the global `~/.config/opencode/opencode.json`
-  for this — see `INSTALL.md` step 5.
+reference it with two gitignored symlinks — `.opencode` (so opencode discovers
+the shared agents/skills/tools/commands, exactly like a project-local
+`.opencode/`) and `.opencodetesting` (the whole clone, for reference by path if
+ever needed). `OPENCODE_CONFIG_DIR=<path>/.opencode` is a fallback for setups
+that can't use symlinks at all (e.g. CI).
 
 One `git pull` in the shared clone then updates every project that references
 it — no vendoring, no manual re-copying.
@@ -149,12 +138,8 @@ codegen recordings).
 **Fastest way to set this up:** in the other project, open `opencode` and
 paste in the raw link to [`INSTALL.md`](INSTALL.md)
 (`https://raw.githubusercontent.com/codeix/opencodetesting/master/INSTALL.md`).
-opencode fetches it, asks how you want it wired up (default: personal,
-gitignored symlinks — nothing machine-specific gets committed, so it works
-regardless of where each teammate has `opencodetesting` cloned), then
-creates the `.opencode`/`.opencodetesting` symlinks and points opencode at
-the shared `AGENTS.md`/docs/references. `OPENCODE_CONFIG_DIR` remains as a
-fallback for setups that can't use symlinks at all (e.g. CI).
+opencode fetches it, asks where `opencodetesting` is cloned, then creates the
+two symlinks and installs Playwright's browser project-locally.
 
 ## Rules of thumb
 

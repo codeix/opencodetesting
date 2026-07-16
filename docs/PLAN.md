@@ -93,8 +93,7 @@ symlinks get created):
 │   ├── scenario/                     # one numbered, editable file per named scenario (see section 4.4) — committed
 │   └── .install/                     # LOCAL ONLY, gitignored
 │       ├── secrets.env               # test password etc., chmod 600 (see section 5)
-│       ├── playwright/               # PLAYWRIGHT_BROWSERS_PATH target — browser binaries, project-local
-│       └── opencode.json             # personal/gitignored wiring only — OPENCODE_CONFIG target, see INSTALL.md step 5. NEVER ~/.config/opencode/opencode.json
+│       └── playwright/               # PLAYWRIGHT_BROWSERS_PATH target — browser binaries, project-local
 └── ...                                # the project's own structure (e.g. config/test.properties, src/test/java/, pom.xml)
 ```
 
@@ -539,20 +538,22 @@ fixed expected values (e.g. as constants or in `config/test.properties`), no cal
       `@Test(groups=...)`) instead of assuming JUnit. `TestConfig` was already
       framework-agnostic (plain Java, no test-framework import) and needed no
       change.
-- [x] Fixed `INSTALL.md`'s personal/gitignored wiring after real-world testing
-      surfaced three problems: (1) it was writing to the user's **global**
-      `~/.config/opencode/opencode.json`, silently affecting every other project
-      on that machine — replaced with a project-local, gitignored
-      `ai/.install/opencode.json` loaded via opencode's `OPENCODE_CONFIG` env var
-      (same mechanism as `PLAYWRIGHT_BROWSERS_PATH`), so nothing outside the
-      project is ever touched (see section 2.2, `INSTALL.md` step 5); (2) the
-      executing agent sometimes skipped the required "where is `opencodetesting`
-      cloned" question — step 2 now says explicitly this blocks step 3 and must
-      not be guessed or defaulted; (3) a broken symlink went unnoticed until the
-      developer had to re-run the whole flow — added on-disk self-checks right
-      after creating the symlinks (step 3) and installing Playwright (step 4),
-      plus a full repair-before-reporting checklist in step 6 instead of just
-      asking the user to restart and eyeball it.
+- [x] Simplified `INSTALL.md` down to three things, after real-world testing
+      surfaced problems with the previous, more elaborate version: (1) ask where
+      `opencodetesting` is cloned (explicitly required — step 1 says this blocks
+      step 2 and must not be guessed or defaulted, since the executing agent had
+      been skipping it); (2) create the two symlinks, with an on-disk check
+      right after (`ls -la`) so a broken symlink doesn't go unnoticed until the
+      developer has to re-run the whole flow; (3) install Playwright's browser
+      project-locally, also checked. **Dropped entirely:** the personal-vs-
+      committed wiring choice, and wiring `AGENTS.md`/docs/references into
+      opencode's config at all — earlier drafts did this via `permission
+      .external_directory` in either the user's **global**
+      `~/.config/opencode/opencode.json` (silently affects every other project
+      on that machine — never do this) or a project-local `ai/.install
+      /opencode.json` loaded via the `OPENCODE_CONFIG` env var, but both were
+      judged more complexity than the win was worth. If that capability is
+      wanted later, it needs its own decision, not a default in this flow.
 - [x] `.gitignore` created — testproject's `ai/.gitignore` covers `.install/`; this
       shared repo's own `.gitignore` covers `*.env` and, as a safety net, `/ai/` in
       case it's ever accidentally created here — see section 5.2
