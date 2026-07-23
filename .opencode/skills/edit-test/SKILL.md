@@ -2,8 +2,9 @@
 name: edit-test
 description: >
   Applies a targeted change to an EXISTING page object or test class, given only the
-  affected method/class excerpt — never the whole file. Use this for "change/fix/
-  update this test" requests instead of regenerating from scratch with
+  affected method/class excerpt — never the whole file. Used by the "selenium" agent
+  once it has proposed its plan and the developer has approved it, for "change/fix/
+  update this test" cases instead of regenerating from scratch with
   generate-pageobject/generate-test. Always run validate-test after applying the edit.
 ---
 

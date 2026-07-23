@@ -2,10 +2,11 @@
 name: check-typography
 description: >
   Generates a purely deterministic Selenium assertion (getCssValue font-family/
-  font-size vs. a static design-tokens reference) tagged @Tag("typography-check"). Use
-  ONLY when the scenario explicitly asks for a font/typography/design check — not for
-  every generated test. No AI or vision call happens at test runtime; this skill only
-  runs at generation time.
+  font-size vs. a static design-tokens reference) tagged/grouped as
+  "typography-check" in whichever mechanism the project's test framework provides
+  (@Tag for JUnit 5, groups for TestNG). Use ONLY when the scenario explicitly asks
+  for a font/typography/design check — not for every generated test. No AI or
+  vision call happens at test runtime; this skill only runs at generation time.
 ---
 
 # check-typography
@@ -21,14 +22,20 @@ tokens) — never load the whole tokens file.
 ## Procedure
 1. Look up the expected font-family/font-size for the element type in
    `references/design-tokens.md`.
-2. Generate a JUnit method tagged `@Tag("typography-check")` that reads
+2. Generate a test method tagged/grouped as `typography-check` — `@Tag
+   ("typography-check")` on a `@Test` method for JUnit 5, or
+   `@Test(groups = "typography-check")` for TestNG; match whichever framework the
+   rest of the project already uses (see `setup-java-skeleton`) — that reads
    `getCssValue("font-family")`/`getCssValue("font-size")` on the known selector.
 3. Compare against the fixed expected value as a Java constant — never call any
    AI/vision API at runtime; the finished test must run with no model access.
 4. Add the method to the existing test class via `edit-test` rather than creating a
    new file, unless no test class exists yet for that page.
-5. Leave sampling/scheduling (which runs get this tag, how often) to the JUnit tag
-   mechanism alone — this skill only writes the assertion, not the trigger schedule.
+5. Leave sampling/scheduling (which runs get this tag/group, how often) to the test
+   framework's own mechanism (and Maven Surefire's `<groups>`/`<excludedGroups>`,
+   which reads both) — this skill only writes the assertion, not the trigger
+   schedule.
 
 ## Output
-Java code only — one `@Test @Tag("typography-check")` method, no explanation text.
+Java code only — one tagged/grouped `typography-check` test method, no explanation
+text.

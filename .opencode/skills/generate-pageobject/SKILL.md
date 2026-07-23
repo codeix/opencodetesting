@@ -1,9 +1,9 @@
 ---
 name: generate-pageobject
 description: >
-  Generates exactly ONE Java Selenium Page Object class (@FindBy pattern) from an
-  ARIA/DOM snapshot produced by explore-page. Use this immediately after
-  explore-page for a "new test"/"new page object" request. Do NOT use this to also
+  Generates exactly ONE Java Selenium Page Object class (@FindBy pattern) from the
+  ARIA/DOM snapshots gathered while exploring a finalized `ai/scenario/<name>.md`.
+  Used by the "selenium" agent once a scenario is ready. Do NOT use this to also
   write the test method — that's generate-test's job; never combine the two in one
   call.
 ---
@@ -11,7 +11,8 @@ description: >
 # generate-pageobject
 
 ## Input
-The ARIA/DOM snapshot text from `explore-page`, plus selector guidance from
+The finalized `ai/scenario/<name>.md` steps, plus the ARIA/DOM snapshot text from
+`explore-page` calls made while that scenario was built, plus selector guidance from
 `component-knowledge` for any Material/Oblique components present in that snapshot.
 
 ## Context budget
@@ -20,9 +21,13 @@ the whole app), plus the relevant `component-knowledge` lines (~200-400 tokens p
 component). Target well under ~1500 tokens of input.
 
 ## Procedure
-1. From the requested scenario, list only the elements actually needed — not every
+1. **Check `src/test/java/pages/` for an existing page object covering this page
+   first.** If one already exists, add the new method(s) to it instead of creating a
+   duplicate class — match its existing field/method naming and structure. Only
+   create a new file if no existing page object covers this page.
+2. From the requested scenario, list only the elements actually needed — not every
    element visible on the page.
-2. For each element, look up its component type in `component-knowledge` before
+3. For each element, look up its component type in `component-knowledge` before
    picking a selector; prefer `data-testid`/ARIA label over a Material-generated ID.
    **Translate, don't copy:** the exploration snapshot/selectors come from
    Playwright (`role=...`, `>>` chaining, `:has-text()`) — none of that syntax
@@ -43,16 +48,19 @@ component). Target well under ~1500 tokens of input.
      browser's native `querySelector`, which throws `InvalidSelectorException` at
      runtime on it (compiles fine, fails only when the test actually runs). Any
      text-based match is XPath, never CSS: `//button[normalize-space()='Cancel']`.
-3. Write one `src/test/java/pages/<Name>Page.java` class: `@FindBy`-annotated fields
-   plus action methods only (no assertions here). No `Thread.sleep` — rely on
-   Selenium's built-in waits. **Constructor takes `WebDriver driver` and stores it as
-   a field — never `extends BaseTest`.** `BaseTest` is a JUnit lifecycle class
-   (`@BeforeEach`/`@AfterEach`, owns the driver's lifecycle) that only test classes
-   extend; a page object that extends it is a category error even when it happens to
+4. Write the class (new) or the added method(s) (existing, per step 1):
+   `src/test/java/pages/<Name>Page.java`, `@FindBy`-annotated fields plus action
+   methods only (no assertions here). No `Thread.sleep` — rely on Selenium's
+   built-in waits. **Constructor takes `WebDriver driver` and stores it as a field —
+   never `extends BaseTest`.** `BaseTest` is a test-framework lifecycle class
+   (`@BeforeEach`/`@AfterEach` for JUnit 5, `@BeforeMethod`/`@AfterMethod` for
+   TestNG — owns the driver's lifecycle either way) that only test classes extend;
+   a page object that extends it is a category error even when it happens to
    compile.
-4. Pull any configurable value (base URL, etc.) from `TestConfig` — never hardcode it.
-5. Keep the class scoped to this scenario's elements/actions; don't pre-build unrelated
-   methods "for later."
+5. Pull any configurable value (base URL, etc.) from `TestConfig` — never hardcode it.
+6. Keep new methods/fields scoped to this scenario's elements/actions; don't
+   pre-build unrelated methods "for later," and don't touch existing methods beyond
+   what step 1 called for.
 
 ## Output
 Java code only — one compilable class, no explanation text, no markdown commentary

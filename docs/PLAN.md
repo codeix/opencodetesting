@@ -1,9 +1,9 @@
-# PLAN.md — AI-Powered Test Generator (OpenCode + Devstral/Ministral + Java/Selenium)
+# PLAN.md — AI-Powered Test Generator (OpenCode + Mistral Small 4 119B + Java/Selenium)
 
 This document is the **build plan** for the project. It describes the architecture and
-defines how every single `SKILL.md` must look, so the agent (Devstral as the text/code
-model, Ministral-3:3b only for visual follow-up questions) can work independently
-without blowing the small AI's context window.
+defines how every single `SKILL.md` must look, so the agent (`mistral-small-4-119b`,
+used both as the text/code model and for rare visual follow-up questions) can work
+independently without blowing the small AI's context window.
 
 This file is **not** loaded automatically by the agent. It is documentation for humans.
 It is optionally linked from `AGENTS.md` so the agent can look it up when needed
@@ -26,8 +26,9 @@ the later implementation phase — not now.
   running web application (Angular or similar).
 - Playwright is used **only internally** by the AI to "see" the page (DOM/accessibility
   tree, screenshots) — it is **not** part of the delivered tests.
-- Small, local models (Devstral for code, Ministral-3:3b for images) have a limited context
-  window → every skill must be scoped so a single call stays small and focused.
+- A small, local model (`mistral-small-4-119b`, used for code and images alike) has a
+  limited context window → every skill must be scoped so a single call stays small and
+  focused.
 - Multi-step tasks (analysis → page object → test → validation) are planned
   **autonomously** by the agent as a chain of skill calls.
 - Developers can later have existing tests edited in a targeted way, without
@@ -37,44 +38,63 @@ the later implementation phase — not now.
 
 ## 2. Folder Structure
 
+### 2.1 This repo (the shared framework)
+
 ```
-project/
-├── bootstrap.sh                       # sets up ONLY the local project (npm, Playwright, config) — no sudo
-├── bootstrap.config.example           # template to pre-fill (optional, instead of interactive prompts)
-├── .tools/                            # LOCAL ONLY, gitignored: secrets.env (no Ollama — runs separately!)
-├── .gitignore                        # must include .tools/ and *.env
-├── opencode.json                     # connection to the external model server via a "local" provider block, permissions, MCP servers (if used)
+opencodetesting/
+├── opencode.json                     # opencode defaults (disabled agents, permissions, MCP servers if used) — no provider block; the local provider is configured in opencode's system settings
 ├── AGENTS.md                         # project rules, conventions, reference to PLAN.md
+├── README.md / INSTALL.md
 ├── docs/
 │   └── PLAN.md                       # this document
-├── .opencode/
-│   ├── package.json                  # npm dependency "playwright" for the custom tool
-│   ├── skills/
-│   │   ├── component-knowledge/SKILL.md
-│   │   ├── explore-page/SKILL.md
-│   │   ├── generate-pageobject/SKILL.md
-│   │   ├── generate-test/SKILL.md
-│   │   ├── validate-test/SKILL.md
-│   │   ├── edit-test/SKILL.md
-│   │   ├── check-typography/SKILL.md
-│   │   └── setup-java-skeleton/SKILL.md   # one-time: pom.xml, TestConfig, BaseTest, folders (verbatim templates)
-│   ├── tools/
-│   │   └── playwright-explore.ts     # custom tool: drives the browser, returns ARIA snapshot + screenshot path
-│   ├── agents/
-│   │   ├── vision.md                 # sub-agent that uses Ministral-3:3b (only for screenshots)
-│   │   ├── explore.md                # primary agent, phase 1: browser exploration (read-only)
-│   │   ├── selenium.md               # primary agent, phase 2: write page objects + tests (no browser/shell)
-│   │   ├── test.md                   # primary agent, phase 3: mvn run + auto-fix (max 3 attempts)
-│   │   └── inspector.md              # primary agent: Playwright codegen recording + translation
-│   └── commands/
-│       ├── new-test.md               # /new-test <url> <scenario>
-│       └── edit-test.md              # /edit-test <test-file> <change>
-├── src/test/java/
-│   ├── pages/                        # generated page objects
-│   └── tests/                        # generated test classes
-├── config/
-│   └── test.properties               # base URL, test user, environments (never hardcoded!)
-└── pom.xml                           # Maven skeleton: Selenium, JUnit, WebDriverManager
+├── references/
+│   ├── oblique-components.md
+│   └── design-tokens.md
+└── .opencode/
+    ├── package.json                  # npm dependency "playwright" for the custom tool
+    ├── skills/
+    │   ├── component-knowledge/SKILL.md
+    │   ├── explore-page/SKILL.md
+    │   ├── generate-pageobject/SKILL.md
+    │   ├── generate-test/SKILL.md
+    │   ├── validate-test/SKILL.md
+    │   ├── edit-test/SKILL.md
+    │   ├── check-typography/SKILL.md
+    │   └── setup-java-skeleton/SKILL.md   # one-time: pom.xml, TestConfig, BaseTest, folders (verbatim templates)
+    ├── tools/
+    │   └── playwright-explore.ts     # custom tool: drives the browser, returns ARIA snapshot + screenshot path
+    └── agents/
+        ├── vision.md                 # sub-agent that uses the configured local model (only for screenshots)
+        ├── learnings.md               # sub-agent that maintains ai/learnings for a testproject
+        ├── scenario.md                # sub-agent that maintains ai/scenario/<name>.md for a testproject
+        ├── explore.md                # primary agent, phase 1: interactive scenario building (read-only)
+        ├── selenium.md                # primary agent, phase 2: write/edit page objects + tests, interactively (no browser/shell)
+        ├── test.md                   # primary agent, phase 3: mvn run + auto-fix (max 3 attempts)
+        └── inspector.md              # primary agent: Playwright codegen recording + translation
+```
+No `commands/` anymore — both `/new-test` and `/edit-test` were removed once `explore`
+and `selenium` became interactive (see sections 4.4 and 4.5); there is no
+slash-command shortcut left in this framework.
+
+### 2.2 A testautomation project that consumes it
+
+Only two symlinks and one `ai/` folder are imposed on a testproject — everything else
+(`config/`, `src/test/java/`, `pom.xml`/Maven, or their equivalents in another stack) is
+that project's own layout and is out of scope here (see `INSTALL.md` for how the
+symlinks get created):
+
+```
+<testproject>/
+├── .opencode -> <path>/opencodetesting/.opencode   # symlink; opencode discovers agents/skills/tools/commands here — must stay at the project root
+├── .opencodetesting -> <path>/opencodetesting       # symlink to the whole shared clone; gives access to AGENTS.md/docs/references by path
+├── ai/
+│   ├── .gitignore                    # ignores .install/ only — learnings and scenario/ ARE committed
+│   ├── learnings                     # testproject-specific knowledge (was LEARNINGS.md at root) — committed
+│   ├── scenario/                     # one numbered, editable file per named scenario (see section 4.4) — committed
+│   └── .install/                     # LOCAL ONLY, gitignored
+│       ├── secrets.env               # test password etc., chmod 600 (see section 5)
+│       └── playwright/               # PLAYWRIGHT_BROWSERS_PATH target — browser binaries, project-local
+└── ...                                # the project's own structure (e.g. config/test.properties, src/test/java/, pom.xml)
 ```
 
 ---
@@ -115,9 +135,9 @@ Every SKILL.md must contain these four sections, in this order:
 - **One skill = one task.** Never combine "analyze AND generate AND validate" into one
   skill.
 - **No full screenshot when text is enough.** Always try working with the
-  DOM/accessibility snapshot (text) first. Only use Ministral-3:3b/images when the skill
-  explicitly needs a "visual follow-up question" (e.g. ambiguous layout). Crop the
-  screenshot to the relevant area then, not the full page.
+  DOM/accessibility snapshot (text) first. Only use images (via the `vision`
+  sub-agent) when the skill explicitly needs a "visual follow-up question" (e.g.
+  ambiguous layout). Crop the screenshot to the relevant area then, not the full page.
 - **Never hand over large files whole.** Give the skill only excerpts (the affected
   method/class) of existing tests/page objects, not the whole file, unless it is
   genuinely short (<80 lines).
@@ -132,22 +152,29 @@ Every SKILL.md must contain these four sections, in this order:
 |---|---|---|---|---|
 | 0 | `component-knowledge` | (no live input — static reference) | selector/structure knowledge about Angular Material & Oblique, as text | none (reference only) |
 | 1 | `explore-page` | URL / running session | DOM snapshot (text) + optional cropped screenshot | Playwright tool (no LLM) |
-| 2 | `generate-pageobject` | DOM snapshot + lookup in `component-knowledge` | Java page object class | Devstral |
-| 3 | `generate-test` | Page object class + test scenario | Java test class (JUnit) | Devstral |
-| 4 | `validate-test` | Test class + page object | `mvn test-compile`/run result, on error: error message | no LLM (only for a fix suggestion: Devstral) |
-| 5 | `edit-test` | existing file (excerpt) + change request | updated excerpt | Devstral |
+| 2 | `generate-pageobject` | DOM snapshot + lookup in `component-knowledge` | Java page object class | `mistral-small-4-119b` |
+| 3 | `generate-test` | Page object class + test scenario | Java test class | `mistral-small-4-119b` |
+| 4 | `validate-test` | Test class + page object | `mvn test-compile`/run result, on error: error message | no LLM (only for a fix suggestion: `mistral-small-4-119b`) |
+| 5 | `edit-test` | existing file (excerpt) + change request | updated excerpt | `mistral-small-4-119b` |
 
-**Autonomous iteration planning:** The agent chains 1→2→3→4 automatically for "new
-test" requests. On validation failures it jumps back to step 3 (max. 3 attempts), then
-aborts with an error report to the developer instead of looping forever.
+**Iteration planning:** Step 1 (`explore-page`) is driven **interactively** by the
+developer through the "explore" agent — one confirmed step at a time, not run
+automatically (see section 4.4). Once the developer finalizes a scenario, "selenium"
+is itself interactive too (see section 4.5): it analyzes the existing code, proposes
+a plan (steps 2/5, whichever fits — new page object/test vs. a targeted edit to an
+existing one), and only proceeds once the developer approves it or the plan is
+unambiguous. Once code is written, "test" runs step 4 (`validate-test`). On
+validation failures it jumps back to whichever skill produced the failing file (max.
+3 attempts), then aborts with an error report to the developer instead of looping
+forever.
 
 ### 4.1 Special case: `component-knowledge` as a pre-prepared knowledge skill
 
 The application uses Angular Material and, built on top of it, **Oblique**
 (https://oblique.bit.admin.ch, the Swiss federal library of Angular components with an
-`Ob*` prefix). The small, local model (Devstral) cannot research these libraries
-itself — it has no internet access and too small a context window to read the docs
-every time.
+`Ob*` prefix). The small, local model (`mistral-small-4-119b`) cannot research these
+libraries itself — it has no internet access and too small a context window to read
+the docs every time.
 
 That's why this knowledge is **prepared once by Claude** (with real web access) and
 stored as a static reference file in the project. The local agent only reads the lines
@@ -172,7 +199,10 @@ function the AI can call (`@opencode-ai/plugin`, `tool()` with a Zod raw shape f
 so it runs directly inside such a custom tool, no detour needed.
 
 **Planned tool:** `.opencode/tools/playwright-explore.ts`
-- `args.action`: `goto | snapshot | screenshot | click | fill`
+- `args.action`: `goto | snapshot | screenshot | click | fill | evaluate`
+  (`evaluate` runs arbitrary JavaScript in the page context via `new Function`, for
+  cases the built-in actions can't cover — e.g. reading a computed style or a value
+  off `window`.)
 - Browser launches **non-headless** (`headless: false`) by decision (2026-07-07): the
   developer watches the exploration live in a visible Chromium window.
 - Browser/page as a module-level singleton, so it stays open across multiple skill
@@ -212,66 +242,83 @@ dedicated skill and no OIDC logic**.
   button), so `explore-page` can automatically repeat it on every new test run without
   asking again.
 - The credentials themselves (test user/password) come from the configuration
-  (`bootstrap.config` → `config/test.properties`, see section 5) — the login *flow*
-  (selectors/clicks) is separate from that and needs no secret handling, only the
-  credentials themselves (see the next open item).
+  (`config/test.properties`, created manually — see README.md "One-time setup") —
+  the login *flow* (selectors/clicks) is separate from that and needs no secret
+  handling, only the credentials themselves (see the next open item).
 
 This removes what was previously assessed as a complex login/auth architecture — the
 only remaining question is **how the test password is securely passed into this flow**
-without ending up in the prompt to Devstral/Ministral-3:3b or in plaintext in the repo.
+without ending up in the prompt to `mistral-small-4-119b` or in plaintext in the repo.
 That is the subject of the next planning step: secrets handling.
 
+### 4.4 Interactive Scenario Building (`ai/scenario/`)
+
+**Decision (2026-07-15):** `explore` is not a one-shot autonomous exploration handed
+off with a chat summary — it's an interactive, conversational session with the
+developer, and the persisted artifact is `ai/scenario/<name>.md`, not the chat
+history. This replaced the earlier `/new-test <url> <scenario>` command, which ran
+the whole chain autonomously "without asking for confirmation between steps" —
+incompatible with wanting the developer to be asked, one step at a time.
+
+- **One step at a time.** The developer says what to do next; `explore` confirms the
+  target element against a live ARIA snapshot (never from memory), executes it via
+  `playwright-explore`, then persists that one confirmed step before asking about the
+  next. Never a whole scenario written in one shot.
+- **Persistence via the `scenario` subagent** (`.opencode/agents/scenario.md`), the
+  same pattern as `learnings`: `explore` cannot write files itself, so it hands each
+  confirmed step to `scenario`, which appends it to `ai/scenario/<name>.md` as the
+  next number.
+- **Format:** numbered steps, one per line, same numbered fill/click/assert
+  convention as the login flow (`AGENTS.md` "Login flow" section) — action, selector,
+  short plain-language context. Numbers are never reassigned, even when earlier steps
+  are later edited.
+- **Resuming and partial replay:** the developer can name an existing scenario and a
+  range (e.g. "play all steps until step 5"); `explore` reads that range from
+  `scenario` and replays it live before continuing the conversation from there.
+- **Editing:** the developer can name a step number and a change; `explore` verifies
+  the new element live, then has `scenario` rewrite just that line in place.
+- **Handoff:** once the developer says the scenario is ready, `explore` tells them to
+  press Tab to "selenium", which reads `ai/scenario/<name>.md` directly (no subagent
+  needed for reading — it already has file access) as the authoritative, ordered step
+  list for `generate-pageobject`/`generate-test`.
+
+### 4.5 Interactive Selenium: Analyze, Plan, Propose
+
+**Decision (2026-07-16):** `selenium` doesn't autonomously turn a scenario into code
+either — it reads the existing project first, builds a plan, and proposes it to the
+developer before writing anything. This replaced the earlier standalone `/edit-test
+<file> <change>` command, for the same reason `/new-test` was replaced: a fixed,
+non-interactive command is incompatible with wanting the developer in the loop. There
+is no slash-command shortcut for either case anymore — new tests and edits to
+existing ones both go through the same interactive `selenium` conversation.
+
+- **Analyze first.** Before deciding anything, `selenium` reads what's already in
+  `src/test/java/pages/` and `src/test/java/tests/` — existing page objects for the
+  same page/route, existing test classes for the same feature, the naming/style
+  conventions already established in the project. It never assumes a class doesn't
+  exist without checking, and never proposes one that duplicates one already there.
+- **Plan, then propose.** `selenium` decides: reuse/extend an existing page object
+  (add a method or two) vs. a genuinely new class; add a method to an existing test
+  class vs. a genuinely new file. It states that plan — which files, reuse vs.
+  create, what methods/assertions — and waits for the developer's go-ahead before
+  writing, unless the developer has already made clear they want it to just proceed.
+- **Ask when unclear.** A selector missing from the session's snapshots, a scenario
+  step that doesn't map onto an existing page object method, an existing convention
+  that conflicts with the scenario — `selenium` says exactly what's unclear rather
+  than guessing.
+- **Prefer extending over duplicating.** The Page Object pattern stays the default;
+  `generate-pageobject` and `generate-test` both start their procedure with "check
+  for an existing one first" (see sections above). One unified path handles both
+  "new test" and "edit existing test": if the plan calls for a targeted change to
+  code that already exists, `selenium` uses `edit-test` (excerpt-only, minimal
+  change, preserves signatures other tests rely on) instead of
+  `generate-pageobject`/`generate-test`.
+
 ---
 
-## 5. Bootstrap (local project only, model server runs separately)
+## 5. Secrets Handling
 
-**Problem:** So far there is no step that sets up a new project once. `pom.xml`,
-`config/test.properties`, `.opencode/package.json`, and Playwright browsers would
-otherwise have to be prepared by hand — that contradicts the "usable out of the box"
-goal.
-
-**Important boundary:** Ollama with Devstral/Ministral-3:3b runs on its **own, separate
-server** (see section 7) and is **not** installed, started, or managed by
-`bootstrap.sh`. `bootstrap.sh` concerns only the local project (this repo) and assumes
-the model server is already running and reachable.
-
-**Solution:** `bootstrap.sh` in the project root. Runs once (or again as needed) and
-installs **everything project-local, no sudo, no system changes**:
-
-| Step | Does what | Where? |
-|---|---|---|
-| 1 | Generate project configuration (base URL, login, model server address) | `config/test.properties` |
-| 2 | Health check: is the external model server reachable? (no abort, just a warning) | — |
-| 3 | Install npm dependencies | `.opencode/node_modules/` |
-| 4 | Install Playwright browsers (`PLAYWRIGHT_BROWSERS_PATH=0`) | `.opencode/node_modules/` instead of `~/.cache` |
-
-No step needs root privileges or changes anything outside the project folder.
-
-### 5.1 Configuration: File AND interactive (both)
-
-- If `bootstrap.config` exists in the project root → values are taken from it.
-- If the file or individual values are missing → asked interactively (base URL,
-  whether login is needed, test username, **external model server address**).
-- `bootstrap.config.example` is included as a template in the repo, so it can be copied
-  and pre-filled if desired, instead of answering interactively every time.
-- **No password** ends up in `bootstrap.config` or `test.properties` — see section 6
-  (secrets handling).
-
-### 5.2 Open Items for Bootstrap
-- [ ] What happens if `.opencode/package.json` (custom tool) doesn't exist yet at
-      bootstrap time? Currently: the step is skipped, no abort — reasonable, but the
-      user shouldn't miss this (a clearer warning may be needed).
-- [ ] Should `bootstrap.sh` also check whether `java`/`mvn` (or the Maven wrapper) are
-      present? Not included currently.
-- [ ] The health check against the model server only checks whether *anything*
-      responds (`curl`), not whether Ollama is running correctly or the right models
-      are loaded — may need refining later (e.g. querying `/api/tags`).
-
----
-
-## 6. Secrets Handling
-
-**Goal:** The test password must never be sent in plaintext to Devstral/Ministral-3:3b, must
+**Goal:** The test password must never be sent in plaintext to `mistral-small-4-119b`, must
 never end up in the repo, but must still be automatically available — both during
 AI-assisted exploration (login via Playwright) and in the final, self-contained
 Selenium test.
@@ -280,235 +327,128 @@ Selenium test.
 test password" belongs at a given spot, not what its value is. Resolving the actual
 value happens outside the prompt, in code that already has filesystem access anyway.
 
-### 6.1 Two Separate Places Where the Password Is Needed
+### 5.1 Two Separate Places Where the Password Is Needed
 
 | Point in time | Who needs the password | How it's resolved | Does the AI see the value? |
 |---|---|---|---|
 | **Generation** (Playwright logs in to explore authenticated pages) | `.opencode/tools/playwright-explore.ts` (custom tool) | The tool only gets a placeholder from the AI (e.g. `"$SECRET:TEST_PASSWORD"`) as the `fill` value, and resolves it itself from a local, non-versioned secrets file | **No** — placeholder in the prompt, real value only in the tool code |
 | **Runtime** (the finished Selenium test logs in) | Java base class (`BaseTest`) | Reads the password itself at runtime from an environment variable/local properties file, never as a literal in the generated `.java` code | **No** — `generate-test` is instructed to always write `TestConfig.get("test.password")`, never the value itself |
 
-### 6.2 Where the Password Actually Lives
+### 5.2 Where the Password Actually Lives
 
-- New, **non-versioned** file: `.tools/secrets.env` (analogous to the `.tools/` folder
-  from bootstrap — already gitignored).
-- `bootstrap.sh` asks for the password **silently** (`read -rsp`, no terminal echo) and
-  writes it exclusively there, with restrictive file permissions (`chmod 600`) —
-  **not** into `config/test.properties` (which stays commit-friendly, without secrets).
-- The project root `.gitignore` must include `.tools/` (and explicitly `*.env` too), so
-  nothing gets checked in even by accidental copying.
+- New, **non-versioned** file: `ai/.install/secrets.env` (see section 2.2), gitignored.
+- Created manually by the developer, with restrictive file permissions (`chmod 600`)
+  — **not** into `config/test.properties` (which stays commit-friendly, without
+  secrets).
+- `ai/.gitignore` must include `.install/`, so nothing gets checked in even by
+  accidental copying.
 
-### 6.3 Placeholder Convention (draft)
+### 5.3 Placeholder Convention (draft)
 
 - When defining the login flow once (section 4.3), the developer does not write the
   real password into the login note, but the placeholder, e.g.:
   `fill(passwordField, "$SECRET:TEST_PASSWORD")`.
 - Both the custom tool (at generation time) and `TestConfig` in Java (at runtime)
   recognize the same naming scheme (`TEST_PASSWORD`) and resolve it from their
-  respective local source (`.tools/secrets.env` or an environment variable/its own
-  properties file for the CI/runtime environment).
+  respective local source (`ai/.install/secrets.env` or an environment variable/its
+  own properties file for the CI/runtime environment).
 - Tool output (the return value of `fill`) never returns the resolved value (e.g. just
   `"filled"`), so the password can't reappear in the context via a detour through the
   tool response either.
 
-### 6.4 Open Items
+### 5.4 Open Items
 - [ ] Define the exact syntax of the placeholder convention (currently only a draft:
       `$SECRET:NAME`)
-- [ ] How does `.tools/secrets.env` get populated in a CI environment (no interactive
-      `bootstrap.sh` possible) — presumably via the CI's own secret variables, still
-      open
+- [ ] How does `ai/.install/secrets.env` get populated in a CI environment (no
+      interactive setup step exists) — presumably via the CI's own secret variables,
+      still open
 - [ ] Check/decide: should `validate-test` (section 4) automatically check for
       accidentally hardcoded passwords in generated Java code (a simple grep as an
       extra safety net)?
 - [ ] Clarify whether the ARIA snapshot after a successful login could accidentally
       contain sensitive data (e.g. a displayed real username), and whether that's
-      uncritical for the prompt to Devstral (test users are usually fake data, but this
-      isn't automatically checked)
+      uncritical for the prompt to `mistral-small-4-119b` (test users are usually fake
+      data, but this isn't automatically checked)
 
 ---
 
-## 7. Model Connection (Devstral Small 2 + Ministral-3:3b on 2× RTX 3060 12GB)
+## 6. Model Connection (Mistral Small 4 119B, default providers)
 
-**Scope note:** Everything in this section concerns the **separate model server**, not
-the project repo or `bootstrap.sh` (see section 5). This section merely documents which
-models/configuration make sense there, so the decision stays traceable — `bootstrap.sh`
-does not install or manage any of it; it only connects to it via the configured
-`MODEL_SERVER_URL`.
+**Correction from an earlier planning version:** This section previously assumed two
+separate small models — "Devstral Small 2" for code and "Ministral-3:3b" for vision —
+running on a self-managed Ollama server, wired up via a custom `provider` block in
+`opencode.json`. Neither model exists; those were invented placeholder names from an
+earlier draft. The project now uses a single real model, **`mistral-small-4-119b`**,
+for both code generation and the rare vision follow-ups.
 
-**Hardware:** 2× RTX 3060, 12 GB VRAM each → 24 GB combined.
+**Provider configuration lives outside this repo.** opencode's default providers
+(including the local provider that serves `mistral-small-4-119b`) are configured in
+opencode's **system/global settings**, not in this project's `opencode.json`. This
+repo's `opencode.json` therefore has no `provider` block and no `model` field — model
+selection happens from within opencode itself (the model picker / global default),
+not hardcoded per project. See `opencode.json` in the repo root.
 
-**Model server address:** `http://sriolo-desktop.local:11434` — this is the value that
-goes into `bootstrap.config` as `MODEL_SERVER_URL` (section 5.1) and into `opencode.json`
-(section 7.3).
+- The `vision` sub-agent (`.opencode/agents/vision.md`) likewise does not pin a
+  `model:` field — it uses whatever default model is configured, currently
+  `mistral-small-4-119b`.
+- No per-project script installs, manages, or health-checks the model server — it is
+  entirely a system-level concern, configured in opencode's global settings.
+- Context budget rules (section 3.3) still apply regardless of exactly how the provider
+  is wired up: `mistral-small-4-119b` is still a comparatively small/local model, so
+  skills must stay narrowly scoped.
 
-**Correction from an earlier planning version:** Initially calculated using numbers
-from the older Devstral generation (24B, ~20 GB at Q4). What's actually used is
-**Devstral Small 2** (official Ollama tag `devstral-small-2`, also 24B, but a newer
-generation) — already running on the separate server according to feedback. Needs only
-**~14–15 GB** at Q4_K_M, notably less than assumed. Requires Ollama **0.13.3 or
-newer**.
-
-**Second correction:** The vision role is filled by **Ministral-3:3b** (Ollama tag
-`ministral-3:3b`), not Pixtral — confirmed working for image description by direct
-local testing. At 3B parameters it needs only a few GB of VRAM, far less than the
-12B Pixtral figure this section originally assumed. This changes the VRAM math in
-7.1/7.2 below: the two models together no longer come close to the 24 GB combined
-limit.
-
-**Realistic VRAM requirement (Q4 quantization):**
-
-| Model | Ollama tag | Parameters | VRAM at Q4 (approx.) | Fits on 1× 12GB? |
-|---|---|---|---|---|
-| Devstral Small 2 | `devstral-small-2` (or `devstral-small-2:24b`) | 24B | ~14–15 GB | No, but notably closer to fitting than previously assumed |
-| Ministral-3:3b | `ministral-3:3b` | 3B | ~2–3 GB (literature estimate, not yet measured with `nvidia-smi`) | Yes, comfortably |
-
-### 7.1 Ministral-3:3b Tag
-
-**Tag:** `ollama pull ministral-3:3b`. Already pulled and tested locally per feedback —
-image description works. No fallback tag needed (unlike the old Pixtral plan, which had
-a documented `mmproj` risk on some Ollama builds); no such issue reported here.
-
-**VRAM headroom consequence:** Devstral (~14–15 GB) + Ministral-3:3b (~2–3 GB) ≈ 17–18 GB
-combined — comfortably under the 24 GB pool, with real headroom for KV cache/overhead.
-This is a materially different situation from the original Pixtral-based plan, where
-both models together sat right at the 24 GB ceiling.
-
-### 7.2 Chosen Approach: One Shared Ollama Server, Dynamic Loading
-
-Instead of fixed GPU allocation: **a single Ollama server** that sees both GPUs as one
-shared 24 GB pool.
-- Devstral is loaded on demand and automatically split across both cards
-  (Ollama/llama.cpp split large models across multiple GPUs on their own).
-- Ministral-3:3b is only loaded on demand (vision sub-agent, used per the plan only for
-  rare visual follow-up questions anyway — see section 4.1).
-- Since the skill flow is inherently **sequential** (one skill = one task, see section
-  3.3), both models almost never need to be loaded at the same time regardless.
-- **Revised from the original Pixtral-based plan:** because combined VRAM usage
-  (~17–18 GB) now sits well under the 24 GB pool with headroom to spare (see 7.1),
-  forcing `OLLAMA_MAX_LOADED_MODELS=1` to prevent overflow is **no longer strictly
-  required** the way it was with Pixtral. It's still a reasonable default for
-  simplicity/predictability (avoids surprising interactions between two models'
-  KV caches), but it's now a choice rather than a VRAM-safety necessity. Leave it
-  set unless the load/unload delay on vision calls becomes annoying in practice —
-  in that case both models can simply be left resident.
-- Context window can stay at a normal size (`OLLAMA_CONTEXT_LENGTH`, if supported by the
-  installed Ollama version — TODO check) rather than being aggressively capped purely
-  for VRAM safety; the context budget rules (section 3.3) still apply for other reasons
-  (skill design, latency), independent of this VRAM headroom. This is configuration on
-  the separate server, not in the project repo.
-
-**Trade-off of this approach:** If `OLLAMA_MAX_LOADED_MODELS=1` is kept, switching
-between Devstral and Ministral-3:3b usage causes a short load delay (model gets
-unloaded/reloaded). That's acceptable because vision calls are rare per the plan anyway.
-With the VRAM headroom now available, this trade-off is optional rather than forced.
-
-### 7.3 `opencode.json` — Connecting to the External Model Server
-
-**Verified against the current OpenCode docs** (this resolves the two TODOs that used
-to be here — the earlier `LOCAL_ENDPOINT`/`local.<model>` dot-notation draft was
-guessed from a doc fragment and was wrong; the real mechanism is a `provider` block
-using the `@ai-sdk/openai-compatible` adapter, with models referenced as
-`provider-id/model-id`, not `local.<model>`):
-
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "provider": {
-    "local": {
-      "npm": "@ai-sdk/openai-compatible",
-      "name": "Local Ollama (Devstral + Ministral)",
-      "options": {
-        "baseURL": "http://sriolo-desktop.local:11434/v1"
-      },
-      "models": {
-        "devstral-small-2": { "name": "Devstral Small 2" },
-        "ministral-3:3b": { "name": "Ministral-3:3b" }
-      }
-    }
-  },
-  "model": "local/devstral-small-2",
-  "agent": {
-    "vision": {
-      "mode": "subagent",
-      "model": "local/ministral-3:3b",
-      "description": "Image-analysis sub-agent — only for visual follow-up questions (see component-knowledge, section 4.1)"
-    }
-  }
-}
-```
-
-- The provider's `baseURL` is the single place the model server address lives inside
-  `opencode.json`. It's the same address stored in `bootstrap.config` as
-  `MODEL_SERVER_URL` (see section 5.1): `http://sriolo-desktop.local:11434`.
-- **Still open:** `MODEL_SERVER_URL` from `bootstrap.config`/`test.properties` is not
-  automatically wired into `opencode.json`'s `baseURL` — currently two separate storage
-  locations with no coupling. Either accept the duplication (both must be kept in sync
-  by hand when the server address changes), or have `bootstrap.sh` template/rewrite
-  `opencode.json`'s `baseURL` from `MODEL_SERVER_URL` as an extra step. Not yet decided.
-
-### 7.4 Open Items
-- [x] Devstral model name corrected: `devstral-small-2` (24B, newer generation),
-      already running locally per feedback — VRAM estimate corrected downward from
-      ~20 GB to ~14–15 GB (see the top of this section).
-- [x] Vision model corrected: Ministral-3:3b (`ministral-3:3b`) replaces Pixtral —
-      confirmed working for image description by direct local testing. VRAM estimate
-      (~2–3 GB) is much lower than Pixtral's (~9–10 GB), which relaxes the shared-pool
-      VRAM constraint in 7.1/7.2.
-- [ ] VRAM numbers (~14–15 GB / ~2–3 GB) are still literature/estimate values —
-      cross-check with `nvidia-smi` during a real run on the actual hardware, even
-      though both models are already demonstrably running.
-- [ ] Check Ollama version: `devstral-small-2` needs **Ollama 0.13.3+** — make sure
-      `bootstrap.sh` loads a sufficiently current version (currently no version check
-      in the script).
-- [x] Runtime context window verified on the live server (2026-07-08 via `/api/ps`):
-      both `devstral-small-2` and `ministral-3:3b` run with **65,536 tokens**. Declared
-      as `limit: { context: 65536 }` per model in `opencode.json` so opencode can track
-      usage and auto-compact — without this, Ollama silently truncates the oldest
-      tokens with no warning to the client. Re-check `/api/ps` if the server's
-      `OLLAMA_CONTEXT_LENGTH`/Modelfile `num_ctx` ever changes, and keep the two in sync.
-- [x] Verified the real `opencode.json` provider syntax against current OpenCode docs
-      (section 7.3) — it's a `provider` block using `@ai-sdk/openai-compatible` with
-      `provider-id/model-id` references, not the guessed `LOCAL_ENDPOINT`/`local.*`
-      dot-notation. `opencode.json` now written with this real syntax.
-- [ ] If Devstral at Q4 turns out too tight (e.g. for longer contexts/multi-file
-      edits): evaluate falling back to a more heavily compressed quantization
-      (Q3_K_M) — a quality trade-off, not yet tested. Less urgent now that
-      Ministral-3:3b's small footprint leaves more headroom overall.
+### 6.1 Open Items
+- [x] Replaced the invented `devstral-small-2`/`ministral-3:3b` model names with the
+      real model, `mistral-small-4-119b`, used for both code and vision.
+- [x] Removed the custom `provider` block from `opencode.json` — the local provider is
+      configured in opencode's system settings instead, so this repo no longer needs
+      to know the model server's address at all.
+- [ ] Confirm `mistral-small-4-119b`'s context window and update the context-budget
+      guidance in section 3.3 if it differs meaningfully from the previously assumed
+      65,536 tokens.
 
 ---
 
-## 8. Java Project Conventions (apply to all generated files)
+## 7. Java Project Conventions (apply to all generated files)
 
 - Page objects: `src/test/java/pages/<Name>Page.java`, `@FindBy` selectors from the DOM
   snapshot, no hardcoded waits (`Thread.sleep`).
-- Tests: `src/test/java/tests/<Name>Test.java`, JUnit 5, one test case = one method.
+- Tests: `src/test/java/tests/<Name>Test.java`, one test case = one method, using
+  whichever Java test framework the project already uses (JUnit 5, TestNG, etc.) —
+  never assume JUnit specifically; check `pom.xml`/existing tests for the actual one.
 - Configuration (base URL, test data, environment) **always** comes from
   `config/test.properties`, never hardcoded in generated code.
 - Every generation ends with `validate-test` before it counts as "done".
 
 ---
 
-## 9. Editing Existing Tests
+## 8. Editing Existing Tests
 
 - No custom versioning format — every generation/edit is a Git commit.
-- `edit-test` only gets the affected excerpt (method/class), not the whole repo, to
-  keep the context small.
-- Before every edit: run `validate-test` again, so errors don't slip in unnoticed.
+- Editing goes through the same interactive `selenium` conversation as writing a new
+  test (see section 4.5) — there is no separate `/edit-test` command anymore.
+  `selenium` reads the existing code, proposes its plan, then applies it via
+  `edit-test`, which only gets the affected excerpt (method/class), not the whole
+  file, to keep the context small.
+- Before every edit counts as done: run `validate-test` again, so errors don't slip
+  in unnoticed.
 
 ---
 
-## 10. Occasional Typography Check
+## 9. Occasional Typography Check
 
 In addition to the functional tests, the test suites should **occasionally** be able to
 check font family and font size.
 
 **Important constraint:** The finished Selenium test runs independently, with no access
-to Ministral-3:3b or any AI at runtime — AI (Devstral/Ministral-3:3b) is only used during
-the **generation** of the test, not during its **execution**. A layout check that would
-send a screenshot to Ministral-3:3b at runtime is therefore ruled out for now and will
-**not** be implemented. If that's wanted later (e.g. via a separate analysis step outside
-the Selenium test), it would need to be architecturally rethought — outside scope for now.
+to `mistral-small-4-119b` or any AI at runtime — the AI is only used during the
+**generation** of the test, not during its **execution**. A layout check that would
+send a screenshot to `mistral-small-4-119b` at runtime is therefore ruled out for now
+and will **not** be implemented. If that's wanted later (e.g. via a separate analysis
+step outside the Selenium test), it would need to be architecturally rethought —
+outside scope for now.
 
-### 10.1 What Remains: `check-typography` (purely deterministic, no AI access at runtime)
+### 9.1 What Remains: `check-typography` (purely deterministic, no AI access at runtime)
 
 | Check | Method | Skill | Runs at runtime? |
 |---|---|---|---|
@@ -519,12 +459,15 @@ tiers per element type such as heading/body text/button) — analogous to the
 `component-knowledge` skill, as another pre-prepared reference file
 (`references/design-tokens.md`, researched once by Claude, currently still
 TODO/unverified). This reference is only read during the **generation** of the test (by
-Devstral), not at runtime — the generated test itself ends up with only fixed expected
-values (e.g. as constants or in `config/test.properties`), no call to an AI.
+`mistral-small-4-119b`), not at runtime — the generated test itself ends up with only
+fixed expected values (e.g. as constants or in `config/test.properties`), no call to an AI.
 
-### 10.2 Trigger Mechanism for "Occasional"
+### 9.2 Trigger Mechanism for "Occasional"
 
-- Test methods get their own JUnit tag, e.g. `@Tag("typography-check")`.
+- Test methods get their own tag/group in whichever mechanism the project's test
+  framework provides, e.g. `@Tag("typography-check")` (JUnit 5) or
+  `@Test(groups = "typography-check")` (TestNG) — Maven Surefire's
+  `<groups>`/`<excludedGroups>` works the same way for both.
 - This tag does **not** run on every normal functional test pass, but instead:
   - either at a fixed sampling rate (e.g. only every nth run),
   - or as a separate, infrequently running job (e.g. nightly),
@@ -532,58 +475,149 @@ values (e.g. as constants or in `config/test.properties`), no call to an AI.
 - The exact trigger rule (rate, schedule, which pages) is still open and will only be
   decided during the implementation phase.
 
-### 10.3 Open Items
+### 9.3 Open Items
 - [ ] Create `references/design-tokens.md` (font family/sizes from the Oblique docs,
       currently unverified — same limitation as `oblique-components.md`)
 - [ ] Define a sampling/scheduling strategy for the `typography-check` tag
 - [ ] Clarify whether/how layout errors (overlap, alignment) could be checked without
       AI at runtime (e.g. purely geometrically via Selenium element
       coordinates/sizes, without image analysis) — a separate, still open topic, no
-      Ministral-3:3b use at runtime
+      AI use at runtime
 
 ---
 
-## 11. Open Items / Next Steps (overall)
+## 10. Open Items / Next Steps (overall)
 
-- [x] `bootstrap.sh` decoupled from Ollama — now only sets up the local project
-      (config, health check against the external server, npm, Playwright). Ollama/models
-      run entirely separately, see section 5.
-- [ ] Test `bootstrap.sh` against real systems (Linux + macOS) — see section 5.2
-- [x] `bootstrap.sh` extended: ask for the password silently (`read -rsp`) and write it
-      to `.tools/secrets.env` (see section 6.2) — implemented, not yet tested
-- [x] `.gitignore` created (`.tools/`, `*.env`, `bootstrap.config`) — see section 6.2
-- [ ] Finalize the placeholder convention `$SECRET:NAME` (section 6.3) — not yet
+- [x] Removed `bootstrap.sh`/`bootstrap.config.example` — no longer made sense once
+      `.opencode` is a shared, symlinked install rather than something set up
+      per-project by a local script (see `INSTALL.md`). Project-local setup (config,
+      secrets, Playwright browsers) is now done manually — see README.md "One-time
+      setup" and section 5.2. The model provider was already configured entirely
+      separately, in opencode's system settings, unaffected by this removal.
+- [x] Consolidated all testproject-local data under one `ai/` folder (see section
+      2.2) instead of scattering it across the project root: `LEARNINGS.md` moved to
+      `ai/learnings`, `.tools/secrets.env` moved to `ai/.install/secrets.env`,
+      Playwright's browser install moved to `ai/.install/playwright` (genuinely
+      project-local now, via `PLAYWRIGHT_BROWSERS_PATH` — previously it installed
+      inside `.opencode/node_modules`, i.e. physically inside the shared symlinked
+      clone, shared by every testproject using it), and codegen recordings moved to
+      `ai/.install/recordings/`. New: `ai/scenario/`, one numbered file per named
+      scenario (see section 4.4). The `.opencode`/`.opencodetesting` symlinks stay at
+      the project root, unaffected — `opencode` only discovers `.opencode/` there.
+- [x] Redesigned `explore` from a one-shot autonomous exploration into an interactive,
+      conversational scenario-building session — one confirmed step at a time, never
+      a whole scenario handed off in one shot (see section 4.4). Added the `scenario`
+      sub-agent (`.opencode/agents/scenario.md`), which persists/edits/replays
+      `ai/scenario/<name>.md`, the same write-through-a-subagent pattern as
+      `learnings`. Removed the `/new-test <url> <scenario>` command entirely — it ran
+      the whole chain autonomously "without asking for confirmation between steps,"
+      which is incompatible with the new interactive model; there is no slash-command
+      replacement, scenario building now happens entirely through conversation with
+      `explore`. `selenium` now reads `ai/scenario/<name>.md` directly as its
+      authoritative input instead of a chat-only scenario summary.
+- [x] Redesigned `selenium` the same way: it analyzes the existing project code
+      (`src/test/java/pages/`, `src/test/java/tests/`) before deciding anything, then
+      proposes a plan (reuse/extend vs. new page object/test method) and asks when
+      something's unclear, instead of silently generating files (see section 4.5).
+      `generate-pageobject`/`generate-test` now both start with "check for an
+      existing one first." Removed the standalone `/edit-test <file> <change>`
+      command for the same reason `/new-test` was removed — non-interactive,
+      incompatible with the new model. No slash-command replacement; `.opencode/`
+      has no `commands/` left. The `edit-test` *skill* still exists, now called by
+      `selenium` once its plan is approved, for the "targeted change to existing
+      code" case specifically.
+- [x] Made the Java test framework a choice, not a hardcoded assumption: JUnit 5
+      remains the default for a fresh project, but TestNG is equally supported.
+      `setup-java-skeleton` now asks which framework to use when `pom.xml` doesn't
+      exist yet, or detects it from an existing `pom.xml`, and has a template
+      variant per framework (`pom.xml` dependency block, `BaseTest`'s
+      `@BeforeEach`/`@AfterEach` vs. `@BeforeMethod`/`@AfterMethod`) — never mixing
+      pieces of one framework's variant with another's in the same project.
+      `generate-test` and `check-typography` match whichever framework the
+      project's existing tests already use (annotation style, `@Tag` vs.
+      `@Test(groups=...)`) instead of assuming JUnit. `TestConfig` was already
+      framework-agnostic (plain Java, no test-framework import) and needed no
+      change.
+- [x] Simplified `INSTALL.md` down to three things, after real-world testing
+      surfaced problems with the previous, more elaborate version: (1) ask where
+      `opencodetesting` is cloned (explicitly required — step 1 says this blocks
+      step 2 and must not be guessed or defaulted, since the executing agent had
+      been skipping it); (2) create the two symlinks, with an on-disk check
+      right after (`ls -la`) so a broken symlink doesn't go unnoticed until the
+      developer has to re-run the whole flow; (3) install Playwright's browser
+      project-locally, also checked. **Dropped entirely:** the personal-vs-
+      committed wiring choice, and wiring `AGENTS.md`/docs/references into
+      opencode's config at all — earlier drafts did this via `permission
+      .external_directory` in either the user's **global**
+      `~/.config/opencode/opencode.json` (silently affects every other project
+      on that machine — never do this) or a project-local `ai/.install
+      /opencode.json` loaded via the `OPENCODE_CONFIG` env var, but both were
+      judged more complexity than the win was worth. If that capability is
+      wanted later, it needs its own decision, not a default in this flow.
+- [x] Fixed `inspector` never actually opening the codegen browser: it was
+      launching `playwright codegen` as a normal foreground bash command, but
+      that command blocks until the developer closes its browser window — an
+      unbounded wait for human interaction, not a quick call — so the turn just
+      hung with no visible result. Same class of problem as the `learnings`
+      background-call saga earlier in this list, but the opposite fix: that one
+      was resolved by *removing* backgrounding (a subagent call is quick enough
+      to be synchronous); codegen genuinely can't be synchronous, so it now runs
+      detached (`nohup ... &` + `disown`, logging to
+      `ai/.install/recordings/<name>.codegen.log`) and `inspector` waits for the
+      developer to say they're done before reading the output file, checking the
+      log if it's missing/empty instead of retrying blindly. Also now creates
+      `ai/.install/recordings/` first (it may not exist yet on first use) and
+      sets `PLAYWRIGHT_BROWSERS_PATH` inline rather than relying on it being
+      inherited from the shell.
+- [x] Fixed `ai/scenario/<name>.md` ending up with gaps despite `explore`'s chat
+      narration looking complete: `explore` was never verifying that its
+      `scenario` append calls actually landed — the same "announces intent,
+      never completes" unreliability already documented for the `skill` tool
+      applies to subagent calls too, and explore's own narration doesn't depend
+      on the write succeeding, so a silent failure was invisible until someone
+      read the file. `explore` now reads `ai/scenario/<name>.md` back after
+      every append/edit to confirm it actually landed, retries once if not, and
+      tells the developer directly if it still didn't — instead of silently
+      moving on. `scenario` itself now always reads the file first to derive the
+      true next step number rather than trusting a number it's told, so one
+      earlier silent failure can't throw off every step number after it.
+      Resuming a scenario with a numbering gap or malformed line now stops and
+      flags it instead of replaying past it.
+- [x] `.gitignore` created — testproject's `ai/.gitignore` covers `.install/`; this
+      shared repo's own `.gitignore` covers `*.env` and, as a safety net, `/ai/` in
+      case it's ever accidentally created here — see section 5.2
+- [ ] Finalize the placeholder convention `$SECRET:NAME` (section 5.3) — not yet
       implemented in the custom tool (`playwright-explore.ts`), only specified
-- [x] Model connection specified (on the separate server): shared Ollama pool,
-      `OLLAMA_MAX_LOADED_MODELS=1` (now optional rather than required, see 7.2),
-      Devstral+Ministral-3:3b tags nailed down, model server at
-      `http://sriolo-desktop.local:11434` — see section 7. VRAM numbers not yet
-      verified on real hardware (section 7.4).
-- [x] Written the real `opencode.json` (verified `provider`/`@ai-sdk/openai-compatible`
-      syntax against the docs) — see section 7.3. Coupling to `MODEL_SERVER_URL` from
-      `bootstrap.config` still not automatic (manual sync for now).
+- [x] Model connection corrected: the earlier "Devstral"/"Ministral-3:3b" names were
+      invented and don't exist; the project uses the real model
+      `mistral-small-4-119b`, via a default provider configured in opencode's system
+      settings rather than a per-project `opencode.json` provider block — see section 6.
+- [x] Removed the custom `provider` block from `opencode.json` — no provider or model
+      is configured per-project anymore; model selection happens from within opencode
+      itself (see section 6.1).
 - [x] Built `.opencode/tools/playwright-explore.ts` (singleton browser, ARIA snapshot,
       screenshot path instead of base64, incl. secret placeholder resolution) — see
-      4.2 + 6.3. Folder corrected to `tools/` (plural) — verified against the installed
+      4.2 + 5.3. Folder corrected to `tools/` (plural) — verified against the installed
       OpenCode binary, the earlier `tool/` (singular) in this plan was wrong.
 - [x] Decided: custom tool (not the ready-made Playwright MCP server) — implemented in
       `.opencode/tools/playwright-explore.ts`, see section 4.2.
 - [x] `pom.xml` skeleton + `TestConfig`/`BaseTest` design: NOT pre-built into the repo —
       by decision (2026-07-07) this is the agent's own job. A new skill
-      `.opencode/skills/setup-java-skeleton/SKILL.md` contains the complete verbatim
-      templates (pom.xml with Selenium 4 + JUnit 5 + WebDriverManager, TestConfig with
-      env/`.tools/secrets.env` secret resolution, BaseTest) and is run once per project
+      `.opencode/skills/setup-java-skeleton/SKILL.md` contains the templates
+      (pom.xml with Selenium 4 + a test framework + WebDriverManager, TestConfig with
+      env/`ai/.install/secrets.env` secret resolution, BaseTest) and is run once per project
       before the first generation, or when `validate-test` finds them missing.
 - [x] Wrote all skill files, including `explore-page` and `check-typography` (see
-      section 10) — see `.opencode/skills/`.
+      section 9) — see `.opencode/skills/`.
 - [x] Phase-specific primary agents added (2026-07-08, decision by the developer):
       `explore` (browser only, read-only), `selenium` (code writing, no browser/shell),
       `test` (mvn + auto-fix, hard 3-attempt limit), `inspector` (Playwright codegen
       recording, translated to AGENTS.md login flow / selenium steps). Built-in `plan`
       agent disabled in `opencode.json`; `build` kept unrestricted for setup/git. All
       agents share one session (Tab-switch), so phase results hand over automatically;
-      per-phase tool restriction keeps Devstral's context and choices small.
+      per-phase tool restriction keeps `mistral-small-4-119b`'s context and choices
+      small.
 - [x] Researched `references/oblique-components.md` and `references/design-tokens.md`
-      (see section 10.3) — still marked unverified/needs-review in-file since it's
+      (see section 9.3) — still marked unverified/needs-review in-file since it's
       compiled from public docs, not hand-tested against a real Oblique app.
 

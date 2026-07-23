@@ -1,17 +1,16 @@
-# Secrets & local-only config — see PLAN.md section 6
-.tools/
+# Secrets & local-only config — see PLAN.md section 5
 *.env
-bootstrap.config
 
-# npm / Playwright (project-local, see PLAN.md section 5)
+# npm / Playwright (project-local, see PLAN.md section 4.2)
 .opencode/node_modules/
 
 # Per-project test workspaces (generated test output, not part of this repo)
 workspace/
 
-# Safety net: LEARNINGS.md is testproject-specific data, never part of this
-# shared framework repo (see AGENTS.md "Shared knowledge" section)
-/LEARNINGS.md
+# Safety net: ai/ (learnings, scenarios, secrets, Playwright install) is
+# testproject-specific data, never part of this shared framework repo
+# (see AGENTS.md "Shared knowledge" section, docs/PLAN.md section 2.2)
+/ai/
 
 # Editor swap files
 *.swp
