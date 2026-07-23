@@ -2,9 +2,12 @@
   "name": "opencodetesting-opencode-extensions",
   "private": true,
   "type": "module",
-  "description": "Custom tool dependencies for the AI-powered Java/Selenium test generator. See docs/PLAN.md section 4.2/5.",
+  "description": "Custom tool and plugin dependencies for the AI-powered Java/Selenium test generator. See docs/PLAN.md section 4.2/5 (tools) and section 4.6 (TUI sidebar plugin).",
   "dependencies": {
+    "@opencode-ai/plugin": "1.18.4",
+    "@opentui/core": "^0.4.5",
+    "@opentui/solid": "^0.4.5",
     "playwright": "^1.61.1",
-    "@opencode-ai/plugin": "^1.17.15"
+    "solid-js": "^1.9.0"
   }
 }

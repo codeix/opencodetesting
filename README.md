@@ -71,6 +71,10 @@ Once a scenario is finalized (or a change request is clear), press Tab to
 and writes or edits the code once you approve. Then Tab to "test" to compile-check
 with Maven (retries up to 3 times on failure, then reports the error).
 
+opencode's own TUI sidebar (`ctrl+x b` to toggle) shows which scenario `explore`
+is currently on, e.g. "📍 search_form — step 6" — read-only, updates live as you
+work. To switch, tell `explore`, don't click the sidebar.
+
 ## Shared knowledge across sessions
 
 The agents keep an `ai/learnings` file — decisions, navigation notes, the login
@@ -120,11 +124,12 @@ Both are optional and unset by default — a normal system Chrome install needs 
 Don't copy this repo into each test-automation project — copies drift out of sync
 with no way to push updates back. Instead, keep a single clone of
 `opencodetesting` (e.g. `~/development/opencodetesting`) and have every project
-reference it with two gitignored symlinks — `.opencode` (so opencode discovers
-the shared agents/skills/tools/commands, exactly like a project-local
-`.opencode/`) and `.opencodetesting` (the whole clone, for reference by path if
-ever needed). `OPENCODE_CONFIG_DIR=<path>/.opencode` is a fallback for setups
-that can't use symlinks at all (e.g. CI).
+reference it with three gitignored symlinks — `.opencode` (so opencode
+discovers the shared agents/skills/tools/commands, exactly like a
+project-local `.opencode/`), `.opencodetesting` (the whole clone, for
+reference by path if ever needed), and `tui.json` (registers the sidebar
+plugin — see "Daily use" above). `OPENCODE_CONFIG_DIR=<path>/.opencode` is a
+fallback for setups that can't use symlinks at all (e.g. CI).
 
 One `git pull` in the shared clone then updates every project that references
 it — no vendoring, no manual re-copying.
@@ -139,7 +144,7 @@ codegen recordings).
 paste in the raw link to [`INSTALL.md`](INSTALL.md)
 (`https://raw.githubusercontent.com/codeix/opencodetesting/master/INSTALL.md`).
 opencode fetches it, asks where `opencodetesting` is cloned, then creates the
-two symlinks and installs Playwright's browser project-locally.
+three symlinks and installs Playwright's browser project-locally.
 
 ## Rules of thumb
 

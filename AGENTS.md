@@ -95,6 +95,10 @@ a test does, separate from the chat that built it.
   discussed in the "explore" chat.
 - Committed like `ai/learnings` — it's meant to be shared with the team, not just
   the AI.
+- Which scenario is active shows up as a status line in opencode's native TUI
+  sidebar (`ctrl+x b` to toggle) — `scenario` maintains a pointer file for this
+  on every invocation. See `docs/PLAN.md` section 4.6 for the details; it's a
+  read-only display, switching still happens by talking to `explore`.
 
 ## Skill chain rules
 

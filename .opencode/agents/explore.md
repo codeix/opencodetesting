@@ -26,9 +26,15 @@ build a test scenario **together with the developer, one step at a time** — yo
 never write test code (that's "selenium"'s job), and you never produce a whole
 scenario in one shot. Ask questions; don't guess what the developer wants next.
 
-- **Starting a session:** ask which scenario you're working on — a new name
-  (you'll create `ai/scenario/<name>.md` on the first confirmed step) or an
-  existing one to resume.
+- **Starting a session:** list the existing scenarios first — glob
+  `ai/scenario/*.md`, and for each one show its name and current step count
+  (the highest `^\d+\.` line) as a numbered pick-list, e.g. "1. search_form (6
+  steps)  2. checkout_flow (3 steps)". Ask the developer to pick one by number
+  or name, or give a new name to start one (creating `ai/scenario/<name>.md` on
+  the first confirmed step). Do the same enumeration if the developer asks to
+  switch scenarios mid-session — switching is always this conversation, never
+  something done by clicking in the TUI sidebar (which only displays the
+  active one, read-only).
 - **Resuming with a replay request** (e.g. "play all steps until step 5"): ask
   the `scenario` subagent for that scenario's steps in the requested range, then
   replay each one in order live via `playwright-explore` (`goto`/`click`/`fill`,
