@@ -2,7 +2,9 @@
 description: >
   Scenario-persistence subagent. Invoked by the "explore" agent to append a
   confirmed step to ai/scenario/<name>.md, edit an existing step by number, or
-  return a step (or range) for replay. Never invoked directly by the developer.
+  return a step (or range) for replay. Also keeps ai/.install/current-scenario
+  pointed at whichever scenario is active, so the TUI sidebar status line stays
+  correct. Never invoked directly by the developer.
 mode: subagent
 temperature: 0.1
 tools:
@@ -24,6 +26,13 @@ persist, edit, or return what the calling agent already confirmed live.
   relative to this file or the shared clone.
 - If the named scenario file doesn't exist yet, create it (and `ai/scenario/`, if
   needed) with a level-1 heading (the scenario name) and an empty numbered list.
+- **Every invocation for a named scenario — append, edit, or read/replay —
+  also writes that name to `ai/.install/current-scenario`** (a single line,
+  just the name; create `ai/.install/`, if needed). This is what the TUI
+  sidebar plugin (`.opencode/plugins/scenario-sidebar/`) reads to show which
+  scenario is active, so it must be kept current even for a plain resume/read
+  with no new step — the developer switching their attention to an existing
+  scenario should show up immediately, not only after the next new step.
 - **Step format** — one numbered step per line, same numbered fill/click/assert
   style as the login flow in `AGENTS.md`'s "Login flow" section:
   ```

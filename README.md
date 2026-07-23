@@ -71,6 +71,10 @@ Once a scenario is finalized (or a change request is clear), press Tab to
 and writes or edits the code once you approve. Then Tab to "test" to compile-check
 with Maven (retries up to 3 times on failure, then reports the error).
 
+opencode's own TUI sidebar (`ctrl+x b` to toggle) shows which scenario `explore`
+is currently on, e.g. "📍 search_form — step 6" — read-only, updates live as you
+work. To switch, tell `explore`, don't click the sidebar.
+
 ## Shared knowledge across sessions
 
 The agents keep an `ai/learnings` file — decisions, navigation notes, the login

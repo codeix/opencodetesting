@@ -51,7 +51,7 @@ opencodetesting/
 │   ├── oblique-components.md
 │   └── design-tokens.md
 └── .opencode/
-    ├── package.json                  # npm dependency "playwright" for the custom tool
+    ├── package.json                  # npm deps: "playwright" (custom tool), @opentui/* + solid-js (sidebar plugin)
     ├── skills/
     │   ├── component-knowledge/SKILL.md
     │   ├── explore-page/SKILL.md
@@ -63,6 +63,8 @@ opencodetesting/
     │   └── setup-java-skeleton/SKILL.md   # one-time: pom.xml, TestConfig, BaseTest, folders (verbatim templates)
     ├── tools/
     │   └── playwright-explore.ts     # custom tool: drives the browser, returns ARIA snapshot + screenshot path
+    ├── plugins/
+    │   └── scenario-sidebar/         # TUI sidebar status line — package.json (exports "./tui") + tui.ts, see section 4.6
     └── agents/
         ├── vision.md                 # sub-agent that uses the configured local model (only for screenshots)
         ├── learnings.md               # sub-agent that maintains ai/learnings for a testproject
@@ -78,22 +80,24 @@ slash-command shortcut left in this framework.
 
 ### 2.2 A testautomation project that consumes it
 
-Only two symlinks and one `ai/` folder are imposed on a testproject — everything else
-(`config/`, `src/test/java/`, `pom.xml`/Maven, or their equivalents in another stack) is
-that project's own layout and is out of scope here (see `INSTALL.md` for how the
-symlinks get created):
+Only two symlinks, one `ai/` folder, and one `tui.json` are imposed on a
+testproject — everything else (`config/`, `src/test/java/`, `pom.xml`/Maven, or
+their equivalents in another stack) is that project's own layout and is out of
+scope here (see `INSTALL.md` for how the symlinks/`tui.json` get created):
 
 ```
 <testproject>/
 ├── .opencode -> <path>/opencodetesting/.opencode   # symlink; opencode discovers agents/skills/tools/commands here — must stay at the project root
 ├── .opencodetesting -> <path>/opencodetesting       # symlink to the whole shared clone; gives access to AGENTS.md/docs/references by path
+├── tui.json                          # registers the sidebar plugin: {"plugin": ["./.opencode/plugins/scenario-sidebar/tui"]} — see section 4.6
 ├── ai/
 │   ├── .gitignore                    # ignores .install/ only — learnings and scenario/ ARE committed
 │   ├── learnings                     # testproject-specific knowledge (was LEARNINGS.md at root) — committed
 │   ├── scenario/                     # one numbered, editable file per named scenario (see section 4.4) — committed
 │   └── .install/                     # LOCAL ONLY, gitignored
 │       ├── secrets.env               # test password etc., chmod 600 (see section 5)
-│       └── playwright/               # PLAYWRIGHT_BROWSERS_PATH target — browser binaries, project-local
+│       ├── playwright/               # PLAYWRIGHT_BROWSERS_PATH target — browser binaries, project-local
+│       └── current-scenario          # single line: active scenario name, written by the scenario subagent — see section 4.6
 └── ...                                # the project's own structure (e.g. config/test.properties, src/test/java/, pom.xml)
 ```
 
@@ -313,6 +317,64 @@ existing ones both go through the same interactive `selenium` conversation.
   code that already exists, `selenium` uses `edit-test` (excerpt-only, minimal
   change, preserves signatures other tests rely on) instead of
   `generate-pageobject`/`generate-test`.
+
+### 4.6 TUI Sidebar Status Line
+
+**Decision (2026-07-23):** show which `ai/scenario/<name>.md` `explore` is
+currently working on as a single line in opencode's own native TUI sidebar
+(`ctrl+x b` to toggle), instead of only in chat. Switching scenarios stays a
+chat conversation with `explore` (see section 4.4) — the sidebar is read-only,
+never clicked.
+
+This required real reverse-engineering: opencode's plugin system has a
+genuine, shipped (not proposal) slot-rendering mechanism
+(`@opencode-ai/plugin` `tui()` hook, `api.slots.register`, the
+`sidebar_content` slot), but the working recipe isn't documented anywhere
+public. Confirmed empirically, in a real running opencode instance:
+
+- A plugin module must export **either** `server()` **or** `tui()`, never
+  both, and never neither.
+- A TUI-capable plugin needs a real `package.json` with an `exports` map
+  exposing a `"./tui"` subpath (`{"exports": {"./tui": "./tui.ts"}}`) — a bare
+  file with no package.json, or a package.json without that exact `exports`
+  shape, silently fails to ever invoke `tui()`.
+- The config entry that actually works is the spec **with the `/tui` suffix
+  written into it directly** — `"./.opencode/plugins/scenario-sidebar/tui"` —
+  in the project's own `tui.json`, not `opencode.json`. A bare package path
+  (no `/tui` suffix) resolves as a `server`-kind plugin only and never touches
+  the `tui()` export, even if `exports["./tui"]` exists.
+- The slot renderer runs once at mount; live updates need an explicit Solid
+  signal, refreshed via `api.event.on("session.idle", ...)` /
+  `"message.part.updated"` (not `file.watcher.updated` — untested whether it
+  even covers `ai/`, and these two fire reliably since our writes only ever
+  happen mid-session anyway). Verified live: editing `ai/scenario/<name>.md`
+  or `ai/.install/current-scenario` mid-session updates the sidebar line
+  without restarting opencode.
+- No plugin-file hot-reload exists at all — every other change needs a full
+  opencode restart to take effect.
+- Working directory inside the plugin: `api.state.path.directory` (typed,
+  confirmed correct), not `process.cwd()` guessing.
+
+**Implementation:**
+- `.opencode/plugins/scenario-sidebar/` — `package.json` (`exports:
+  {"./tui": "./tui.ts"}`) + `tui.ts`. Reads `ai/.install/current-scenario`
+  (the active scenario's name, single line) then `ai/scenario/<name>.md`,
+  deriving the step count by parsing the highest `^\d+\.` line — never a
+  stored count, same "derive from disk" discipline `scenario` already follows
+  for step numbers. Renders `📍 <name> — step <n>`; missing pointer/scenario
+  file renders nothing.
+- `ai/.install/current-scenario` — written by the `scenario` subagent (see
+  section 4.4) on every invocation for a named scenario, not just new steps,
+  so resuming an existing scenario shows up immediately.
+- `tui.json` in the testproject root registers the plugin (see `INSTALL.md`
+  step 4) — this is new, project-local, per-testproject setup, same as the
+  `ai/.install/playwright` step; it doesn't come for free with the
+  `.opencode` symlink.
+- `.opencode/package.json` gained `@opentui/core`, `@opentui/solid`,
+  `solid-js` as dependencies, and `@opencode-ai/plugin` was bumped
+  `^1.17.15` → `^1.18.4` (the slot API needs this version) — a
+  shared-framework-wide change affecting every testproject that symlinks this
+  repo, not scoped to just this feature.
 
 ---
 
@@ -583,6 +645,16 @@ fixed expected values (e.g. as constants or in `config/test.properties`), no cal
       earlier silent failure can't throw off every step number after it.
       Resuming a scenario with a numbering gap or malformed line now stops and
       flags it instead of replaying past it.
+- [x] Added a TUI sidebar status line showing which scenario `explore` is
+      working on (see section 4.6) — `.opencode/plugins/scenario-sidebar/`, a
+      new `ai/.install/current-scenario` pointer file maintained by `scenario`,
+      and a new `tui.json` registration step in `INSTALL.md`. Required real
+      reverse-engineering of opencode's plugin loader (undocumented publicly);
+      verified live, end-to-end, in a real running opencode instance rather
+      than assumed from types — see section 4.6 for the exact working recipe
+      and the wrong turns that didn't work. `.opencode/package.json` gained
+      `@opentui/core`/`@opentui/solid`/`solid-js` and bumped
+      `@opencode-ai/plugin` to `^1.18.4`.
 - [x] `.gitignore` created — testproject's `ai/.gitignore` covers `.install/`; this
       shared repo's own `.gitignore` covers `*.env` and, as a safety net, `/ai/` in
       case it's ever accidentally created here — see section 5.2

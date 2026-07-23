@@ -61,7 +61,20 @@ just for this one install, since the tool reads it again at runtime.
 Check it worked: `ai/.install/playwright` shouldn't be empty afterward. If it
 is, the install failed silently — re-run it.
 
-### 4. Verify and report back
+### 4. Register the sidebar plugin
+
+Create `tui.json` in the project root (or add to it, if one exists):
+
+```json
+{
+  "plugin": ["./.opencode/plugins/scenario-sidebar/tui"]
+}
+```
+
+This shows which `ai/scenario/<name>.md` `explore` is currently working on as
+a status line in opencode's native TUI sidebar (toggle with `ctrl+x b`).
+
+### 5. Verify and report back
 
 Restart opencode in this project, then confirm the shared agents (`explore`,
 `selenium`, `test`, `inspector`) are available. Report back: the path used,
@@ -101,5 +114,11 @@ If you'd rather do this yourself without going through the agent:
    ```
    Add that same `export` line to your shell profile (or a project-local
    `.envrc`) so it's set every time you run `opencode` here, not just now.
-5. Restart opencode in your project and confirm the shared agents (`explore`,
+5. Create `tui.json` in the project root:
+   ```json
+   {
+     "plugin": ["./.opencode/plugins/scenario-sidebar/tui"]
+   }
+   ```
+6. Restart opencode in your project and confirm the shared agents (`explore`,
    `selenium`, `test`, `inspector`) are available.
