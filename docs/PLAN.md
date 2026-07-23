@@ -80,16 +80,18 @@ slash-command shortcut left in this framework.
 
 ### 2.2 A testautomation project that consumes it
 
-Only two symlinks, one `ai/` folder, and one `tui.json` are imposed on a
-testproject — everything else (`config/`, `src/test/java/`, `pom.xml`/Maven, or
-their equivalents in another stack) is that project's own layout and is out of
-scope here (see `INSTALL.md` for how the symlinks/`tui.json` get created):
+Only three symlinks and one `ai/` folder are imposed on a testproject —
+everything else (`config/`, `src/test/java/`, `pom.xml`/Maven, or their
+equivalents in another stack) is that project's own layout and is out of
+scope here (see `INSTALL.md` for how the symlinks get created). `tui.json` is
+a symlink, not a hand-written file — its content never differs between
+projects, same reasoning as `.opencode`/`.opencodetesting`:
 
 ```
 <testproject>/
 ├── .opencode -> <path>/opencodetesting/.opencode   # symlink; opencode discovers agents/skills/tools/commands here — must stay at the project root
 ├── .opencodetesting -> <path>/opencodetesting       # symlink to the whole shared clone; gives access to AGENTS.md/docs/references by path
-├── tui.json                          # registers the sidebar plugin: {"plugin": ["./.opencode/plugins/scenario-sidebar/tui"]} — see section 4.6
+├── tui.json -> <path>/opencodetesting/tui.json      # symlink; registers the sidebar plugin, see section 4.6
 ├── ai/
 │   ├── .gitignore                    # ignores .install/ only — learnings and scenario/ ARE committed
 │   ├── learnings                     # testproject-specific knowledge (was LEARNINGS.md at root) — committed
@@ -367,9 +369,12 @@ public. Confirmed empirically, in a real running opencode instance:
   section 4.4) on every invocation for a named scenario, not just new steps,
   so resuming an existing scenario shows up immediately.
 - `tui.json` in the testproject root registers the plugin (see `INSTALL.md`
-  step 4) — this is new, project-local, per-testproject setup, same as the
-  `ai/.install/playwright` step; it doesn't come for free with the
-  `.opencode` symlink.
+  step 4) — a third symlink to `opencodetesting/tui.json`, not a file to
+  hand-write, since its content is identical for every testproject (confirmed:
+  a symlinked `tui.json` resolves its relative `plugin` path the same way the
+  symlinked `.opencode` already does — no special-casing needed). Unlike
+  `.opencode`, it doesn't come for free with that symlink; it's its own setup
+  step, same as `ai/.install/playwright`.
 - `.opencode/package.json` gained `@opentui/core`, `@opentui/solid`,
   `solid-js` as dependencies, and `@opencode-ai/plugin` was bumped
   `^1.17.15` → `^1.18.4` (the slot API needs this version) — a

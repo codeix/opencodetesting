@@ -63,25 +63,28 @@ is, the install failed silently — re-run it.
 
 ### 4. Register the sidebar plugin
 
-Create `tui.json` in the project root (or add to it, if one exists):
-
-```json
-{
-  "plugin": ["./.opencode/plugins/scenario-sidebar/tui"]
-}
+```bash
+ln -s <path>/tui.json tui.json
 ```
 
-This shows which `ai/scenario/<name>.md` `explore` is currently working on as
-a status line in opencode's native TUI sidebar (toggle with `ctrl+x b`).
+Same idea as step 2's symlinks: `tui.json`'s content never differs between
+projects, so it's a third symlink, not a file to hand-write. Add it to the
+project's `.gitignore` alongside `.opencode`/`.opencodetesting`. This shows
+which `ai/scenario/<name>.md` `explore` is currently working on as a status
+line in opencode's native TUI sidebar (toggle with `ctrl+x b`).
+
+If the project already has its own `tui.json` with unrelated plugins in it,
+merge the entry in by hand instead of symlinking — add
+`"./.opencode/plugins/scenario-sidebar/tui"` to its `plugin` array.
 
 ### 5. Verify and report back
 
 Restart opencode in this project, then confirm the shared agents (`explore`,
 `selenium`, `test`, `inspector`) are available. Report back: the path used,
-the two symlinks, and where Playwright's browser was installed.
+the three symlinks, and where Playwright's browser was installed.
 
-Nothing from `opencodetesting` is copied — only the two symlinks. A `git pull`
-in the `opencodetesting` clone updates every project that points at it.
+Nothing from `opencodetesting` is copied — only the three symlinks. A `git
+pull` in the `opencodetesting` clone updates every project that points at it.
 
 ### Windows note
 
@@ -114,11 +117,13 @@ If you'd rather do this yourself without going through the agent:
    ```
    Add that same `export` line to your shell profile (or a project-local
    `.envrc`) so it's set every time you run `opencode` here, not just now.
-5. Create `tui.json` in the project root:
-   ```json
-   {
-     "plugin": ["./.opencode/plugins/scenario-sidebar/tui"]
-   }
+5. Symlink `tui.json` (registers the sidebar plugin — same reasoning as the
+   symlinks in step 2, its content never differs between projects):
+   ```bash
+   ln -s <path>/tui.json tui.json
    ```
+   Add it to the project's `.gitignore` too. If the project already has its
+   own `tui.json`, merge `"./.opencode/plugins/scenario-sidebar/tui"` into
+   its `plugin` array by hand instead of symlinking over it.
 6. Restart opencode in your project and confirm the shared agents (`explore`,
    `selenium`, `test`, `inspector`) are available.
